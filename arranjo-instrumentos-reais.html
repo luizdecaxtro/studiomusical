@@ -241,7 +241,7 @@ RH.samba=Object.assign({id:'samba',name:'Samba',region:'Rio de Janeiro',ts:'2/4'
 RH.baiao=Object.assign({id:'baiao',name:'Baião / Forró',region:'Nordeste',ts:'2/4',beats:2,stepsPerBeat:4,swing:0,bpm:110,artic:'chop',
   caveat:'Aproximação da zabumba (baixo) com o triângulo no pulso. O timbre real de zabumba e triângulo pede amostras de percussão brasileira.'},
   R(8,{bass:{0:'R',3:'5',4:'R'},guitar:{0:'D',3:'D',4:'D',6:'U'},
-       perc:{0:['surdo','tri'],2:['tri'],3:['surdo'],4:['surdo','tri'],6:['tri']}}));
+       perc:{0:['surdo','tri'],3:['surdo'],4:['surdo','tri']}}));
 RH.reggae=Object.assign({id:'reggae',name:'Reggae',region:'São Luís · Maranhão',ts:'4/4',beats:4,stepsPerBeat:4,swing:0,bpm:75,
   caveat:'O skank nos contratempos, com one-drop (surdo + caixa juntos) no 3º tempo. Da capital brasileira do reggae.'},
   R(16,{bass:{0:'R',8:'5'},guitar:{2:'X',6:'X',10:'X',14:'X'},
@@ -356,7 +356,7 @@ async function loadInstruments(){
     DRUMMAP={surdo:pick('kick','bassdrum','bass','tom-low','conga-low','tom'),
       caixa:pick('snare','clap','rimshot'),
       ganza:pick('maracas','shaker','hihat','hihat-closed','closed-hihat','hat'),
-      tri:pick('cowbell','clave','claves','rimshot','hihat-open','open-hihat','hat')};
+      tri:pick('hihat-closed','closed-hihat','hat','hihat','shaker','maracas','cowbell','clave','claves','rimshot')};
     loaded=true; $('status').textContent='Instrumentos reais carregados. ▶ toque o arranjo.';
   }catch(err){$('status').className='status err';$('status').textContent='Não consegui baixar as amostras. Precisa de internet e HTTPS (funciona no seu GitHub Pages). '+err.message;loading=false;return false;}
   loading=false; return true;
@@ -365,7 +365,7 @@ function gtr(midi,t,dur,vel){if(guitar)guitar.start({note:midi,time:t,duration:d
 function strum(strings,t,dir,dur,vel){const sp=(rhythm&&rhythm.artic==='chop')?0.008:0.02;const arr=dir==='U'?strings.slice().reverse():strings.slice();arr.forEach((m,i)=>gtr(m,t+i*sp,dur,Math.round(vel*(dir==='U'?0.85:1))));}
 function muteChnk(strings,t){strings.forEach((m,i)=>gtr(m,t+i*0.01,0.14,42));}
 function bassNote(midi,t,dur,vel){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:vel});}
-function perc(inst,t){const gname=DRUMMAP[inst];if(gname&&drums){const vel={ganza:66,tri:76,surdo:114,caixa:98}[inst]||100;try{drums.start({note:gname,time:t,velocity:vel});}catch(e){}}}
+function perc(inst,t){const gname=DRUMMAP[inst];if(gname&&drums){const vel={ganza:66,tri:52,surdo:114,caixa:98}[inst]||100;try{drums.start({note:gname,time:t,velocity:vel});}catch(e){}}}
 
 /* ---- scheduler (lookahead) ---- */
 let playing=false,curStep=0,nextTime=0,timer=null,endStep=Infinity;
