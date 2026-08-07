@@ -341,10 +341,15 @@ async function loadInstruments(){
   ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
   $('status').className='status'; $('status').textContent='Baixando amostras dos instrumentos reais… (pode levar alguns segundos na primeira vez)';
   try{
-    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_nylon',volume:112});
-    bass=Soundfont(ctx,{instrument:'acoustic_bass',volume:118});
+    // EQ de brilho/nitidez: limpa graves + realça presença e agudo
+    const eqIn=ctx.createBiquadFilter();eqIn.type='highpass';eqIn.frequency.value=85;
+    const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3800;pres.Q.value=0.9;pres.gain.value=4.5;
+    const air=ctx.createBiquadFilter();air.type='highshelf';air.frequency.value=6500;air.gain.value=5.5;
+    eqIn.connect(pres);pres.connect(air);air.connect(ctx.destination);
+    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_steel',volume:110,destination:eqIn}); // aço = mais brilhante que nylon
+    bass=Soundfont(ctx,{instrument:'acoustic_bass',volume:116,destination:eqIn});
     drums=DrumMachine(ctx,{instrument:'TR-808'});
-    try{const rev=Reverb(ctx);guitar.output.addEffect('reverb',rev,0.18);}catch(e){}
+    try{const rev=Reverb(ctx);guitar.output.addEffect('reverb',rev,0.10);}catch(e){} // menos reverb = mais nitidez
     await Promise.all([guitar.load,bass.load,drums.load]);
     let groups=[]; try{groups=drums.getGroupNames();}catch(e){groups=[];}
     const pick=(...opts)=>opts.find(o=>groups.includes(o))||groups[0];
@@ -471,3 +476,4 @@ refreshChords(); renderStyles(); selectStyle('poprock');
 </script>
 </body>
 </html>
+
