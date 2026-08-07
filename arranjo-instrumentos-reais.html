@@ -373,7 +373,7 @@ function strum(strings,t,dir,dur,vel){const sp=(rhythm&&rhythm.artic==='chop')?0
 function muteChnk(strings,t){strings.forEach((m,i)=>gtr(m,t+i*0.01,0.14,42));}
 function bassNote(midi,t,dur,vel){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:vel});}
 function perc(inst,t){
-  if(rhythm&&rhythm.id==='samba'&&sambaLoop)return;
+  if(rhythm&&rhythm.id==='samba')return;
   if(rhythm&&(rhythm.id==='samba'||rhythm.id==='baiao')){const real={surdo:['surdo',0.85],surdoA:['surdo',1.25],ganza:['ganza',0.5],tamborim:['tamborim',0.8],caixa:['caixa',0.62],tri:['triangulo',0.5],zdum:['zabumba_dum',1.0],zta:['zabumba_ta',0.8]}[inst];if(real&&PB[real[0]]){sampleHit(real[0],t,real[1]);return;}}
   const gname=DRUMMAP[inst];if(gname&&drums){const vel={ganza:66,tri:52,surdo:114,surdoA:122,caixa:98}[inst]||100;try{drums.start({note:gname,time:t,velocity:vel});}catch(e){}}}
 
@@ -392,7 +392,7 @@ function scheduleStep(gStep,baseT){
   if(layers.g){const tok=rhythm.guitar[sib];const gdur=rhythm.artic==='chop'?Math.min(0.17,sd*1.1):sd*2.8,gvel=rhythm.artic==='chop'?78:92;
     if(tok==='D'||tok==='U')strum(chord.voicing.strings,t,tok,gdur,gvel);
     else if(tok==='X')muteChnk(chord.voicing.strings,t);}
-  if(layers.p)rhythm.perc[sib].forEach(inst=>perc(inst,t));
+  if(layers.p&&rhythm.id!=='samba')rhythm.perc[sib].forEach(inst=>perc(inst,t));
   uiQueue.push({sib,bar,time:baseT});
 }
 function scheduler(){
@@ -490,3 +490,4 @@ refreshChords(); renderStyles(); selectStyle('poprock');
 </script>
 </body>
 </html>
+
