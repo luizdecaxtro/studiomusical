@@ -234,12 +234,12 @@ RH.poprock=Object.assign({id:'poprock',name:'Pop / Rock',region:'batida clássic
 RH.bossa=Object.assign({id:'bossa',name:'Bossa Nova',region:'Rio de Janeiro',ts:'4/4',beats:4,stepsPerBeat:4,swing:15,bpm:130,
   caveat:'Redução de 1 compasso — a bossa autêntica se apoia numa clave de 2 compassos. Use como ponto de partida.'},
   R(16,{bass:{0:'R',8:'5'},guitar:{3:'D',6:'D',11:'D',14:'D'}}));
-RH.samba=Object.assign({id:'samba',name:'Samba',region:'Rio de Janeiro',ts:'2/4',beats:2,stepsPerBeat:4,swing:10,bpm:100,
-  caveat:'Redução para violão de um ritmo essencialmente percussivo (surdo, tamborim, ganzá).'},
-  R(8,{bass:{0:'R',4:'5'},guitar:{0:'D',2:'U',3:'X',4:'D',6:'U',7:'X'},
-       perc:{0:['surdo','ganza'],1:['ganza'],2:['ganza','caixa'],3:['ganza'],4:['surdo','ganza'],5:['ganza'],6:['ganza','caixa'],7:['ganza']}}));
-RH.baiao=Object.assign({id:'baiao',name:'Baião / Forró',region:'Nordeste',ts:'2/4',beats:2,stepsPerBeat:4,swing:0,bpm:110,
-  caveat:'Aproximação da zabumba (baixo) com o triângulo marcando o pulso — a alma do forró.'},
+RH.samba=Object.assign({id:'samba',name:'Samba',region:'Rio de Janeiro',ts:'2/4',beats:2,stepsPerBeat:4,swing:8,bpm:100,artic:'chop',
+  caveat:'Redução para violão de um ritmo essencialmente percussivo (surdo, tamborim, ganzá). A percussão aqui é um substituto eletrônico — o timbre real pede amostras de percussão brasileira.'},
+  R(8,{bass:{0:'R',4:'5'},guitar:{0:'X',2:'D',3:'X',4:'X',6:'D',7:'X'},
+       perc:{0:['surdo','ganza'],2:['ganza'],3:['caixa'],4:['surdo','ganza'],6:['ganza'],7:['caixa']}}));
+RH.baiao=Object.assign({id:'baiao',name:'Baião / Forró',region:'Nordeste',ts:'2/4',beats:2,stepsPerBeat:4,swing:0,bpm:110,artic:'chop',
+  caveat:'Aproximação da zabumba (baixo) com o triângulo no pulso. O timbre real de zabumba e triângulo pede amostras de percussão brasileira.'},
   R(8,{bass:{0:'R',3:'5',4:'R'},guitar:{0:'D',3:'D',4:'D',6:'U'},
        perc:{0:['surdo','tri'],2:['tri'],3:['surdo'],4:['surdo','tri'],6:['tri']}}));
 RH.reggae=Object.assign({id:'reggae',name:'Reggae',region:'São Luís · Maranhão',ts:'4/4',beats:4,stepsPerBeat:4,swing:0,bpm:75,
@@ -357,10 +357,10 @@ async function loadInstruments(){
   loading=false; return true;
 }
 function gtr(midi,t,dur,vel){if(guitar)guitar.start({note:midi,time:t,duration:dur,velocity:vel});}
-function strum(strings,t,dir,dur,vel){const arr=dir==='U'?strings.slice().reverse():strings.slice();arr.forEach((m,i)=>gtr(m,t+i*0.02,dur,Math.round(vel*(dir==='U'?0.85:1))));}
+function strum(strings,t,dir,dur,vel){const sp=(rhythm&&rhythm.artic==='chop')?0.008:0.02;const arr=dir==='U'?strings.slice().reverse():strings.slice();arr.forEach((m,i)=>gtr(m,t+i*sp,dur,Math.round(vel*(dir==='U'?0.85:1))));}
 function muteChnk(strings,t){strings.forEach((m,i)=>gtr(m,t+i*0.01,0.14,42));}
 function bassNote(midi,t,dur,vel){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:vel});}
-function perc(inst,t){const gname=DRUMMAP[inst];if(gname&&drums){try{drums.start({note:gname,time:t});}catch(e){}}}
+function perc(inst,t){const gname=DRUMMAP[inst];if(gname&&drums){const vel={ganza:66,tri:76,surdo:114,caixa:98}[inst]||100;try{drums.start({note:gname,time:t,velocity:vel});}catch(e){}}}
 
 /* ---- scheduler (lookahead) ---- */
 let playing=false,curStep=0,nextTime=0,timer=null,endStep=Infinity;
@@ -374,8 +374,8 @@ function scheduleStep(gStep,baseT){
   const chord=chords[bar%chords.length]; if(!chord)return;
   const t=baseT+swingOffset(sib), sd=stepDur();
   if(layers.b&&rhythm.bass[sib]){const bm=rhythm.bass[sib]==='R'?chord.voicing.bass:chord.voicing.bass+7;bassNote(bm,t,sd*2.6,110);}
-  if(layers.g){const tok=rhythm.guitar[sib];
-    if(tok==='D'||tok==='U')strum(chord.voicing.strings,t,tok,sd*2.8,92);
+  if(layers.g){const tok=rhythm.guitar[sib];const gdur=rhythm.artic==='chop'?Math.min(0.17,sd*1.1):sd*2.8,gvel=rhythm.artic==='chop'?78:92;
+    if(tok==='D'||tok==='U')strum(chord.voicing.strings,t,tok,gdur,gvel);
     else if(tok==='X')muteChnk(chord.voicing.strings,t);}
   if(layers.p)rhythm.perc[sib].forEach(inst=>perc(inst,t));
   uiQueue.push({sib,bar,time:baseT});
