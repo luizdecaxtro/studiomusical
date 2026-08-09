@@ -10,7 +10,7 @@
   :root{
     --bg:#100f18;--bg2:#15131f;--panel:#1b1927;--panel2:#221f30;
     --line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.15);
-    --ink:#eceaf5;--mut:#a5a1b8;--guit:#35d0a5;--bass:#f5b642;--perc:#9d8cff;--bad:#ff6b6b;
+    --ink:#eceaf5;--mut:#a5a1b8;--guit:#35d0a5;--bass:#f5b642;--perc:#9d8cff;--keys:#6ab7ff;--bad:#ff6b6b;
     --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,"Liberation Mono",monospace;
     --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
@@ -76,6 +76,8 @@
   .layer .tog[data-tog=g].on{border-color:var(--guit);background:#132420}.layer .tog[data-tog=g].on .sw{background:var(--guit);opacity:1}
   .layer .tog[data-tog=b].on{border-color:var(--bass);background:#221a10}.layer .tog[data-tog=b].on .sw{background:var(--bass);opacity:1}
   .layer .tog[data-tog=p].on{border-color:var(--perc);background:#17142a}.layer .tog[data-tog=p].on .sw{background:var(--perc);opacity:1}
+  .layer .tog[data-tog=k].on{border-color:var(--keys);background:#0f2030}.layer .tog[data-tog=k].on .sw{background:var(--keys);opacity:1}
+  .ksel{background:#0d0c14;color:var(--ink);border:1px solid var(--line2);border-radius:9px;padding:8px 10px;font-family:var(--sans);font-size:14px;cursor:pointer}
   .layer .vol{flex:1;min-width:130px;margin-top:0}
   .layer .volpct{font-family:var(--mono);font-size:14px;color:var(--mut);width:46px;text-align:right}
   .transport{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:20px}
@@ -95,6 +97,11 @@
   <span class="brand">DeCastro · O Canal do Conhecimento</span>
   <h1>Estúdio de Música</h1>
   <p class="sub">Monte a música por <b>seções</b> (intro, estrofe, refrão…), defina a ordem, e toque do começo ao fim. Salve como projeto para reabrir e editar depois.</p>
+
+  <div style="margin-bottom:22px">
+    <label for="songName" style="display:block;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:8px">Nome da música</label>
+    <input id="songName" type="text" value="Minha música" spellcheck="false" style="width:100%;font-size:20px;font-weight:700;background:#0d0c14;color:var(--ink);border:1px solid var(--line2);border-radius:12px;padding:13px 16px;outline:none">
+  </div>
 
   <div class="card">
     <div class="eyebrow"><span><span class="n">01</span> Ritmo da música</span></div>
@@ -126,6 +133,7 @@
       <div class="layer"><span class="tog on" data-tog="g"><i class="sw"></i> Violão</span><input type="range" class="vol" id="vol_g" min="0" max="100" value="85"><span class="volpct" id="pct_g">85%</span></div>
       <div class="layer"><span class="tog on" data-tog="b"><i class="sw"></i> Baixo</span><input type="range" class="vol" id="vol_b" min="0" max="100" value="90"><span class="volpct" id="pct_b">90%</span></div>
       <div class="layer"><span class="tog on" data-tog="p"><i class="sw"></i> Percussão (loop)</span><input type="range" class="vol" id="vol_p" min="0" max="100" value="100"><span class="volpct" id="pct_p">100%</span></div>
+      <div class="layer"><span class="tog" data-tog="k"><i class="sw"></i> Teclado</span><select id="keysSound" class="ksel"><option value="acoustic_grand_piano">Piano</option><option value="electric_piano_1">Piano elétrico</option><option value="rock_organ">Órgão</option><option value="accordion">Sanfona / Acordeão</option><option value="tango_accordion">Sanfona (fole)</option><option value="string_ensemble_1">Cordas</option><option value="harmonica">Gaita</option></select><input type="range" class="vol" id="vol_k" min="0" max="100" value="70"><span class="volpct" id="pct_k">70%</span></div>
     </div>
     <div class="transport">
       <button class="btn primary" id="btnPlay">▶ Tocar música</button>
@@ -136,7 +144,7 @@
     <div class="note-box"><b>Andamento:</b> cada ritmo foi gravado num BPM específico (mostrado ao lado). No BPM original a percussão fica perfeita; afastar muito desafina um pouco o loop. Violão e baixo acompanham em qualquer andamento.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v1</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v2</b></footer>
 </div>
 
 <script type="module">
@@ -190,8 +198,9 @@ const RHYTHMS=[
 
 /* ---------- estado ---------- */
 let rhythm=null,bpm=120;
-const layers={g:true,b:true,p:true};
-const volumes={g:0.85,b:0.90,p:1.0};
+const layers={g:true,b:true,p:true,k:false};
+const volumes={g:0.85,b:0.90,p:1.0,k:0.70};
+const keysCache={};let keysSound='acoustic_grand_piano';
 let sections=[
   {id:1,name:'Intro',chords:'C G',repeats:1},
   {id:2,name:'Estrofe',chords:'C G Am F',repeats:2},
@@ -265,13 +274,15 @@ function renderSequence(){
 function setVol(k,v){volumes[k]=v/100;$('pct_'+k).textContent=v+'%';
   if(k==='g'&&guitarGain)guitarGain.gain.value=volumes.g;
   if(k==='b'&&bassGain)bassGain.gain.value=volumes.b;
-  if(k==='p'&&loopGain)loopGain.gain.value=volumes.p;}
-['g','b','p'].forEach(k=>{$('vol_'+k).oninput=e=>setVol(k,+e.target.value);});
+  if(k==='p'&&loopGain)loopGain.gain.value=volumes.p;
+  if(k==='k'&&keysGain)keysGain.gain.value=volumes.k;}
+['g','b','p','k'].forEach(k=>{$('vol_'+k).oninput=e=>setVol(k,+e.target.value);});
+$('keysSound').onchange=e=>{keysSound=e.target.value;if(ctx&&layers.k)loadKeys(keysSound);};
 document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{t.classList.toggle('on');layers[t.dataset.tog]=t.classList.contains('on');
   if(t.dataset.tog==='p'&&playing){if(layers.p)startLoop(ctx.currentTime+0.05);else stopLoop();}});
 
 /* ---------- áudio ---------- */
-let ctx=null,guitar=null,bass=null,eqIn=null,guitarGain=null,bassGain=null,loaded=false,loading=false;
+let ctx=null,guitar=null,bass=null,eqIn=null,guitarGain=null,bassGain=null,keysGain=null,loaded=false,loading=false;
 function buildEQ(){
   eqIn=ctx.createBiquadFilter();eqIn.type='highpass';eqIn.frequency.value=80;
   const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3600;pres.Q.value=0.9;pres.gain.value=3;
@@ -279,6 +290,7 @@ function buildEQ(){
   eqIn.connect(pres);pres.connect(air);air.connect(ctx.destination);
   guitarGain=ctx.createGain();guitarGain.gain.value=volumes.g;guitarGain.connect(eqIn);
   bassGain=ctx.createGain();bassGain.gain.value=volumes.b;bassGain.connect(eqIn);
+  keysGain=ctx.createGain();keysGain.gain.value=volumes.k;keysGain.connect(eqIn);
 }
 async function loadInstruments(){
   if(loaded)return true;if(loading)return false;loading=true;
@@ -299,6 +311,9 @@ async function loadLoop(r){
     r.buffer=await ctx.decodeAudioData(await resp.arrayBuffer());setStatus('');return r.buffer;
   }catch(err){setStatus('Não achei o loop: '+r.file+' — confira a pasta /ritmos. ('+err.message+')',true);return null;}
 }
+async function loadKeys(sound){if(keysCache[sound])return keysCache[sound];setStatus('Carregando teclado…');
+  try{const inst=Soundfont(ctx,{instrument:sound,destination:keysGain});await inst.load;keysCache[sound]=inst;setStatus('');return inst;}
+  catch(e){setStatus('Não consegui carregar o teclado. '+e.message,true);return null;}}
 function strumSoft(strings,t,dur){strings.forEach((m,i)=>{if(guitar)guitar.start({note:m,time:t+i*0.02,duration:dur,velocity:48});});}
 function bassNote(midi,t,dur){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:82});}
 
@@ -331,7 +346,8 @@ let playing=false,barIdx=0,nextBarTime=0,timer=null,raf=null,uiQ=[],songBars=[],
 const barSec=()=>(rhythm.seconds/rhythm.bars)*(rhythm.nativeBpm/bpm);
 function scheduleBar(b,t){const d=barSec();
   if(layers.g)strumSoft(b.chord.voicing.strings,t,d*0.92);
-  if(layers.b)bassNote(b.chord.voicing.bass,t,d*0.92);}
+  if(layers.b)bassNote(b.chord.voicing.bass,t,d*0.92);
+  if(layers.k){const kb=keysCache[keysSound];if(kb)b.chord.voicing.strings.forEach(m=>kb.start({note:m,time:t,duration:d*0.95,velocity:42}));}}
 function scheduler(){
   while(nextBarTime<ctx.currentTime+0.25&&barIdx<songBars.length){
     const b=songBars[barIdx];scheduleBar(b,nextBarTime);
@@ -355,6 +371,7 @@ async function play(){
   $('btnPlay').disabled=true;
   const ok=await loadInstruments();if(!ok){$('btnPlay').disabled=false;return;}
   const buf=await loadLoop(rhythm);if(!buf){$('btnPlay').disabled=false;return;}
+  if(layers.k)await loadKeys(keysSound);
   $('btnPlay').disabled=false;if(ctx.state==='suspended')ctx.resume();
   stopAll();playing=true;barIdx=0;uiQ=[];
   const t0=ctx.currentTime+0.25;nextBarTime=t0;startLoop(t0);
@@ -373,20 +390,30 @@ function stop(){stopAll();resetT();$('curChord').textContent='—';setStatus('Pa
 $('btnPlay').onclick=play;$('btnStop').onclick=stop;
 
 /* ---------- salvar / abrir projeto ---------- */
+function slug(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()||'minha-musica';}
 $('saveBtn').onclick=()=>{
-  const data={app:'DeCastroMusica',v:1,rhythmIndex:RHYTHMS.indexOf(rhythm),bpm,volumes,sections,sequence};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='minha-musica.json';a.click();
-  setStatus('Projeto salvo (minha-musica.json).');
+  const name=$('songName').value.trim()||'Minha música';
+  const data={app:'DeCastroMusica',v:1,name,rhythmIndex:RHYTHMS.indexOf(rhythm),bpm,volumes,layers:{...layers},keysSound,sections,sequence};
+  const text=JSON.stringify(data,null,2);
+  const blob=new Blob([text],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const fname=slug(name)+'.json';
+  const a=document.createElement('a');a.href=url;a.download=fname;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+  setStatus('Projeto salvo: "'+fname+'" na sua pasta de Downloads.');
 };
 $('loadInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const d=JSON.parse(r.result);
+    if(typeof d.name==='string')$('songName').value=d.name;
     if(Array.isArray(d.sections))sections=d.sections;
     if(Array.isArray(d.sequence))sequence=d.sequence;
     secCounter=Math.max(0,...sections.map(s=>+s.id||0));
-    if(d.volumes){Object.assign(volumes,d.volumes);['g','b','p'].forEach(k=>{const p=Math.round(volumes[k]*100);$('vol_'+k).value=p;$('pct_'+k).textContent=p+'%';});
+    if(d.volumes){Object.assign(volumes,d.volumes);['g','b','p','k'].forEach(k=>{const p=Math.round(volumes[k]*100);$('vol_'+k).value=p;$('pct_'+k).textContent=p+'%';});
       if(guitarGain)guitarGain.gain.value=volumes.g;if(bassGain)bassGain.gain.value=volumes.b;if(loopGain)loopGain.gain.value=volumes.p;}
     if(typeof d.rhythmIndex==='number'&&RHYTHMS[d.rhythmIndex])selectRhythm(d.rhythmIndex);
+    if(d.layers){Object.assign(layers,d.layers);document.querySelectorAll('.tog').forEach(t=>t.classList.toggle('on',!!layers[t.dataset.tog]));}
+    if(d.keysSound){keysSound=d.keysSound;const ks=$('keysSound');if(ks)ks.value=keysSound;if(keysGain)keysGain.gain.value=volumes.k;}
     if(d.bpm){bpm=d.bpm;$('bpm').value=bpm;$('bpmVal').textContent=bpm;}
     renderSections();renderSeqButtons();renderSequence();setStatus('Projeto carregado.');
   }catch(err){setStatus('Arquivo de projeto inválido.',true);}};
