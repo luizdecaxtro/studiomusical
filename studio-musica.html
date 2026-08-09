@@ -61,6 +61,11 @@
   .btn:hover{background:#2a2740}
   .btn.primary{background:var(--guit);color:#06231b;border-color:transparent}
   .btn.primary.on{background:var(--bad);color:#2a0a0f}
+  .btn.rec{background:#2a1620;border-color:#5a2a38;color:#ffb4c2}
+  .btn.rec:hover{background:#3a1e2c}
+  .btn.rec.on{background:var(--bad);color:#2a0a0f;border-color:transparent;animation:recpulse 1.2s infinite}
+  .recdot{width:11px;height:11px;border-radius:50%;background:currentColor;display:inline-block}
+  @keyframes recpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.5)}50%{box-shadow:0 0 0 8px rgba(255,107,107,0)}}
   .btn.ghost{font-size:14px;padding:9px 14px}
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .ctl label{font-family:var(--mono);font-size:14px;color:var(--mut);display:flex;justify-content:space-between}
@@ -137,14 +142,16 @@
     </div>
     <div class="transport">
       <button class="btn primary" id="btnPlay">▶ Tocar música</button>
+      <button class="btn rec" id="recBtn"><span class="recdot"></span> Gravar música</button>
       <button class="btn" id="btnStop" disabled>■ Parar</button>
     </div>
     <div class="nowbar"><span class="lbl">Tocando:</span> <span class="cur" id="curChord">—</span></div>
     <div class="status" id="status"></div>
     <div class="note-box"><b>Andamento:</b> cada ritmo foi gravado num BPM específico (mostrado ao lado). No BPM original a percussão fica perfeita; afastar muito desafina um pouco o loop. Violão e baixo acompanham em qualquer andamento.</div>
+    <div class="note-box" style="border-color:rgba(255,107,107,.35);background:#20141a;color:#f3d0d7"><b style="color:#ff9fb0">Gravar música:</b> toca a estrutura do início ao fim e baixa um arquivo de áudio (.webm) na pasta Downloads, com o nome da música. Captura a mixagem interna na proporção de volumes e só as camadas ligadas. Feito para o computador; no celular pode não gravar. Para cancelar, clique em Parar.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v2</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v3</b></footer>
 </div>
 
 <script type="module">
@@ -282,12 +289,14 @@ document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{t.classList.toggle('
   if(t.dataset.tog==='p'&&playing){if(layers.p)startLoop(ctx.currentTime+0.05);else stopLoop();}});
 
 /* ---------- áudio ---------- */
-let ctx=null,guitar=null,bass=null,eqIn=null,guitarGain=null,bassGain=null,keysGain=null,loaded=false,loading=false;
+let ctx=null,guitar=null,bass=null,eqIn=null,guitarGain=null,bassGain=null,keysGain=null,mediaDest=null,loaded=false,loading=false;
+let recorder=null,recChunks=[],recording=false,recCancel=false;
 function buildEQ(){
   eqIn=ctx.createBiquadFilter();eqIn.type='highpass';eqIn.frequency.value=80;
   const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3600;pres.Q.value=0.9;pres.gain.value=3;
   const air=ctx.createBiquadFilter();air.type='highshelf';air.frequency.value=6500;air.gain.value=4;
   eqIn.connect(pres);pres.connect(air);air.connect(ctx.destination);
+  mediaDest=ctx.createMediaStreamDestination();air.connect(mediaDest);
   guitarGain=ctx.createGain();guitarGain.gain.value=volumes.g;guitarGain.connect(eqIn);
   bassGain=ctx.createGain();bassGain.gain.value=volumes.b;bassGain.connect(eqIn);
   keysGain=ctx.createGain();keysGain.gain.value=volumes.k;keysGain.connect(eqIn);
@@ -323,7 +332,7 @@ function startLoop(t0){
   loopSrc=ctx.createBufferSource();loopSrc.buffer=rhythm.buffer;loopSrc.loop=true;
   loopSrc.playbackRate.value=bpm/rhythm.nativeBpm;
   loopGain=ctx.createGain();loopGain.gain.value=volumes.p;
-  loopSrc.connect(loopGain).connect(ctx.destination);loopSrc.start(t0);
+  loopSrc.connect(loopGain);loopGain.connect(ctx.destination);if(mediaDest)loopGain.connect(mediaDest);loopSrc.start(t0);
 }
 function stopLoop(){if(loopSrc){try{loopSrc.stop();}catch(e){}loopSrc=null;}}
 
@@ -364,30 +373,71 @@ function uiTick(){
     [...$('sequence').children].forEach(c=>c.classList.toggle('play',+c.dataset.pos===e.seqPos));}
   raf=requestAnimationFrame(uiTick);
 }
+async function ensureReady(){
+  const ok=await loadInstruments();if(!ok)return false;
+  const buf=await loadLoop(rhythm);if(!buf)return false;
+  if(layers.k)await loadKeys(keysSound);
+  return true;
+}
+function startPlayback(){
+  stopAll();playing=true;barIdx=0;uiQ=[];
+  const t0=ctx.currentTime+0.25;nextBarTime=t0;startLoop(t0);
+  $('btnStop').disabled=false;
+  scheduler();raf=requestAnimationFrame(uiTick);
+}
 async function play(){
   if(!rhythm){setStatus('Escolha um ritmo primeiro.');return;}
   songBars=buildBars();
   if(!songBars.length){setStatus('Monte a estrutura da música com seções e acordes válidos.');return;}
   $('btnPlay').disabled=true;
-  const ok=await loadInstruments();if(!ok){$('btnPlay').disabled=false;return;}
-  const buf=await loadLoop(rhythm);if(!buf){$('btnPlay').disabled=false;return;}
-  if(layers.k)await loadKeys(keysSound);
-  $('btnPlay').disabled=false;if(ctx.state==='suspended')ctx.resume();
-  stopAll();playing=true;barIdx=0;uiQ=[];
-  const t0=ctx.currentTime+0.25;nextBarTime=t0;startLoop(t0);
-  $('btnPlay').classList.add('on');$('btnPlay').childNodes[0].textContent='▶ Tocando…';$('btnStop').disabled=false;
+  const r=await ensureReady();$('btnPlay').disabled=false;if(!r)return;
+  if(ctx.state==='suspended')ctx.resume();
+  startPlayback();
+  $('btnPlay').classList.add('on');$('btnPlay').childNodes[0].textContent='▶ Tocando…';
   const secs=(songBars.length*barSec()).toFixed(0);
   setStatus('Tocando a música ('+songBars.length+' compassos, ~'+secs+'s)…');
-  scheduler();raf=requestAnimationFrame(uiTick);
+}
+function pickMime(){const c=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'];
+  if(!window.MediaRecorder)return null;for(const m of c){try{if(MediaRecorder.isTypeSupported(m))return m;}catch(e){}}return '';}
+function resetRecUI(){$('recBtn').classList.remove('on');$('recBtn').childNodes[1].textContent=' Gravar música';$('recBtn').disabled=false;$('btnPlay').disabled=false;}
+async function recordSong(){
+  if(!rhythm){setStatus('Escolha um ritmo primeiro.');return;}
+  songBars=buildBars();
+  if(!songBars.length){setStatus('Monte a estrutura da música primeiro.');return;}
+  if(!window.MediaRecorder){setStatus('Seu navegador não suporta gravação de áudio.',true);return;}
+  $('recBtn').disabled=true;$('btnPlay').disabled=true;
+  const r=await ensureReady();if(!r){resetRecUI();return;}
+  if(ctx.state==='suspended')await ctx.resume();
+  recChunks=[];recCancel=false;
+  const mime=pickMime();
+  try{recorder=mime?new MediaRecorder(mediaDest.stream,{mimeType:mime}):new MediaRecorder(mediaDest.stream);}
+  catch(e){setStatus('Não consegui iniciar a gravação. '+e.message,true);resetRecUI();return;}
+  recorder.ondataavailable=e=>{if(e.data&&e.data.size)recChunks.push(e.data);};
+  recorder.onstop=()=>{
+    if(recCancel){setStatus('Gravação cancelada.');return;}
+    const type=(recorder&&recorder.mimeType)||mime||'audio/webm';
+    const ext=type.includes('mp4')?'m4a':type.includes('ogg')?'ogg':'webm';
+    const blob=new Blob(recChunks,{type});
+    const fname=slug($('songName').value||'musica')+'.'+ext;
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fname;
+    document.body.appendChild(a);a.click();setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+    setStatus('Gravação pronta: "'+fname+'" na sua pasta de Downloads.');
+  };
+  recorder.start();recording=true;
+  startPlayback();
+  $('btnPlay').disabled=false;$('recBtn').disabled=false;
+  $('recBtn').classList.add('on');$('recBtn').childNodes[1].textContent=' Gravando…';
+  const secs=(songBars.length*barSec()).toFixed(0);
+  setStatus('Gravando a música do início ao fim (~'+secs+'s)… não feche a aba.');
 }
 function stopAll(){if(timer)clearTimeout(timer);if(endTimer)clearTimeout(endTimer);if(raf)cancelAnimationFrame(raf);
   if(loopGain&&ctx){try{loopGain.gain.setTargetAtTime(0,ctx.currentTime,0.06);}catch(e){}}
   setTimeout(stopLoop,180);playing=false;}
 function resetT(){$('btnPlay').classList.remove('on');$('btnPlay').childNodes[0].textContent='▶ Tocar música';$('btnStop').disabled=true;
   [...$('sequence').children].forEach(c=>c.classList.remove('play'));}
-function finishSong(){stopAll();resetT();$('curChord').textContent='—';setStatus('Fim da música. ▶ para tocar de novo.');}
-function stop(){stopAll();resetT();$('curChord').textContent='—';setStatus('Parado.');}
-$('btnPlay').onclick=play;$('btnStop').onclick=stop;
+function finishSong(){const wasRec=recording;stopAll();resetT();$('curChord').textContent='—';if(wasRec){recording=false;recCancel=false;resetRecUI();setTimeout(()=>{if(recorder&&recorder.state!=='inactive')recorder.stop();},300);}else setStatus('Fim da música. ▶ para tocar de novo.');}
+function stop(){const wasRec=recording;stopAll();resetT();$('curChord').textContent='—';if(wasRec){recording=false;recCancel=true;resetRecUI();if(recorder&&recorder.state!=='inactive')recorder.stop();setStatus('Gravação cancelada.');}else setStatus('Parado.');}
+$('btnPlay').onclick=play;$('btnStop').onclick=stop;$('recBtn').onclick=recordSong;
 
 /* ---------- salvar / abrir projeto ---------- */
 function slug(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()||'minha-musica';}
@@ -424,3 +474,4 @@ renderStyles();selectRhythm(5);renderSections();renderSeqButtons();renderSequenc
 </script>
 </body>
 </html>
+
