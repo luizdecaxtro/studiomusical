@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
+<title>Estúdio de Ritmos — DeCastro</title>
+<style>
+  :root{
+    --bg:#100f18;--bg2:#15131f;--panel:#1b1927;--panel2:#221f30;
+    --line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.15);
+    --ink:#eceaf5;--mut:#a5a1b8;--guit:#35d0a5;--bass:#f5b642;--perc:#9d8cff;--bad:#ff6b6b;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;font-size:16px;background:
+    radial-gradient(1200px 600px at 12% -10%, #1d1a2e 0%, transparent 55%),
+    radial-gradient(1000px 520px at 100% 0%, #172420 0%, transparent 50%), var(--bg);
+    color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;padding:32px 22px 80px}
+  .brand{font-family:var(--mono);font-size:13px;letter-spacing:.26em;text-transform:uppercase;color:var(--guit)}
+  h1{font-size:clamp(30px,5vw,44px);font-weight:800;letter-spacing:-.02em;margin:8px 0 6px;line-height:1.03}
+  .sub{color:var(--mut);font-size:16px;max-width:64ch;margin:0 0 26px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:20px}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:16px}
+  .eyebrow .n{color:var(--guit);font-weight:700}
+  .hint{color:var(--mut);font-size:14px;margin-top:12px}
+  #chordInput{width:100%;font-family:var(--mono);font-size:19px;letter-spacing:.04em;background:#0d0c14;color:var(--ink);border:1px solid var(--line2);border-radius:12px;padding:14px 16px;outline:none}
+  #chordInput:focus{border-color:var(--guit)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .chip{font-family:var(--mono);font-size:17px;font-weight:700;background:var(--panel2);border:1px solid var(--line2);color:var(--guit);border-radius:10px;padding:7px 13px}
+  .chip.cur{background:var(--guit);color:#06231b;border-color:transparent}
+  .chip.bad{color:var(--bad);border-color:#5a2a30;background:#241318}
+  .styles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
+  .style{background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:13px;cursor:pointer;transition:.15s}
+  .style:hover{border-color:var(--line2);transform:translateY(-1px)}
+  .style.on{border-color:var(--guit);box-shadow:inset 0 0 0 1px var(--guit);background:#132420}
+  .style .sname{font-size:17px;font-weight:700}
+  .style .sreg{font-size:13px;color:var(--mut);margin-top:2px;min-height:17px}
+  .style .smeta{font-family:var(--mono);font-size:13px;color:var(--guit);margin-top:7px}
+  .ctl label{font-family:var(--mono);font-size:14px;color:var(--mut);display:flex;justify-content:space-between}
+  .ctl label b{color:var(--bass)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;background:#332f47;border-radius:99px;outline:none;margin-top:10px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:var(--bass);cursor:pointer;border:3px solid #100f18}
+  input[type=range]::-moz-range-thumb{width:19px;height:19px;border-radius:50%;background:var(--bass);cursor:pointer;border:3px solid #100f18}
+  .togs{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .tog{font-size:15px;padding:10px 15px;border-radius:11px;border:1px solid var(--line2);background:transparent;color:var(--mut);cursor:pointer;user-select:none;display:inline-flex;gap:9px;align-items:center;font-weight:600}
+  .tog .sw{width:11px;height:11px;border-radius:3px;background:currentColor;opacity:.6}
+  .tog.on{color:var(--ink)}
+  .tog[data-tog=g].on{border-color:var(--guit);background:#132420}.tog[data-tog=g].on .sw{background:var(--guit);opacity:1}
+  .tog[data-tog=b].on{border-color:var(--bass);background:#221a10}.tog[data-tog=b].on .sw{background:var(--bass);opacity:1}
+  .tog[data-tog=p].on{border-color:var(--perc);background:#17142a}.tog[data-tog=p].on .sw{background:var(--perc);opacity:1}
+  .transport{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:20px}
+  .btn{appearance:none;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);font-family:var(--sans);font-size:16px;font-weight:700;padding:14px 24px;border-radius:12px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:.15s}
+  .btn:hover{background:#2a2740}
+  .btn.primary{background:var(--guit);color:#06231b;border-color:transparent}
+  .btn.primary.on{background:var(--bad);color:#2a0a0f}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .nowbar{display:flex;align-items:baseline;gap:14px;margin:22px 0 6px;flex-wrap:wrap}
+  .nowbar .lbl{font-size:14px;color:var(--mut)}
+  .nowbar .cur{font-family:var(--mono);font-size:24px;font-weight:800;color:var(--guit)}
+  .status{font-family:var(--mono);font-size:14px;color:var(--mut);min-height:22px;margin-top:14px}
+  .status.err{color:var(--bad)}
+  .note-box{border:1px solid rgba(245,182,66,.32);background:#1c1710;border-radius:12px;padding:14px 16px;margin-top:22px;font-size:14.5px;color:#e9d9b8}
+  .note-box b{color:var(--bass)}
+  footer{color:var(--mut);font-size:13px;font-family:var(--mono);margin-top:34px;text-align:center;letter-spacing:.03em}
+  footer b{color:var(--guit);font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="brand">DeCastro · O Canal do Conhecimento</span>
+  <h1>Estúdio de Ritmos</h1>
+  <p class="sub">Digite os acordes, escolha um ritmo e toque junto. A percussão são <b>gravações reais</b> de cada ritmo brasileiro; o violão e o baixo acompanham a sua harmonia por cima.</p>
+
+  <div class="card">
+    <div class="eyebrow"><span class="n">01</span> Sequência de acordes</div>
+    <input id="chordInput" type="text" value="C G Am F" spellcheck="false" autocomplete="off">
+    <div class="chips" id="chips"></div>
+    <p class="hint">Um acorde por compasso. Aceita maiores, menores, 7, m7, maj7, dim, sus4, 6, add9 e baixo invertido (G/B). Repita um acorde para durar mais compassos.</p>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow"><span class="n">02</span> Ritmo</div>
+    <div class="styles" id="styles"></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow"><span class="n">03</span> Tocar</div>
+    <div class="ctl"><label>Andamento <b><span id="bpmVal">120</span> BPM</b> <span id="bpmNative" style="color:var(--mut)"></span></label><input type="range" id="bpm" min="60" max="200" step="1" value="120"></div>
+    <div class="togs">
+      <span class="tog on" data-tog="g"><i class="sw"></i> Violão</span>
+      <span class="tog on" data-tog="b"><i class="sw"></i> Baixo</span>
+      <span class="tog on" data-tog="p"><i class="sw"></i> Percussão (loop)</span>
+    </div>
+    <div class="transport">
+      <button class="btn primary" id="btnPlay">▶ Tocar</button>
+      <button class="btn" id="btnStop" disabled>■ Parar</button>
+    </div>
+    <div class="nowbar"><span class="lbl">Tocando:</span> <span class="cur" id="curChord">—</span></div>
+    <div class="status" id="status"></div>
+    <div class="note-box">
+      <b>Sobre o andamento:</b> cada ritmo é uma gravação feita num BPM específico (mostrado ao lado do controle). No BPM original a percussão fica perfeita; afastar muito o andamento faz o loop tocar mais rápido/lento e <b>desafinar um pouco</b> a percussão. O violão e o baixo acompanham sem problema em qualquer andamento.
+    </div>
+  </div>
+
+  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v1</b></footer>
+</div>
+
+<script type="module">
+"use strict";
+import { Soundfont, Reverb } from "https://unpkg.com/smplr/dist/index.mjs";
+
+/* ---------- teoria / cifras ---------- */
+const LETTER={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+const QUAL={'':[0,4,7],'maj':[0,4,7],'M':[0,4,7],'m':[0,3,7],'min':[0,3,7],'-':[0,3,7],'5':[0,7],
+  'dim':[0,3,6],'°':[0,3,6],'o':[0,3,6],'aug':[0,4,8],'+':[0,4,8],'7':[0,4,7,10],
+  'maj7':[0,4,7,11],'M7':[0,4,7,11],'7M':[0,4,7,11],'m7':[0,3,7,10],'min7':[0,3,7,10],'-7':[0,3,7,10],
+  'm7b5':[0,3,6,10],'ø':[0,3,6,10],'6':[0,4,7,9],'m6':[0,3,7,9],'sus4':[0,5,7],'sus':[0,5,7],'sus2':[0,2,7],
+  'add9':[0,4,7,14],'9':[0,4,7,10,14],'m9':[0,3,7,10,14],'maj9':[0,4,7,11,14]};
+function parseChord(sym){
+  sym=(sym||'').trim();if(!sym)return null;
+  const m=sym.match(/^([A-Ga-g])([#b]?)(.*)$/);if(!m)return null;
+  let pc=LETTER[m[1].toUpperCase()];if(m[2]==='#')pc=(pc+1)%12;if(m[2]==='b')pc=(pc+11)%12;
+  let q=m[3],bassPc=null;const sl=q.split('/');
+  if(sl.length===2){q=sl[0];const bm=sl[1].match(/^([A-Ga-g])([#b]?)/);if(bm){bassPc=LETTER[bm[1].toUpperCase()];if(bm[2]==='#')bassPc=(bassPc+1)%12;if(bm[2]==='b')bassPc=(bassPc+11)%12;}}
+  const iv=QUAL[q];return{rootPc:pc,intervals:iv===undefined?QUAL['']:iv,bassPc,sym,unknown:iv===undefined};
+}
+function voicing(ch){
+  const root=ch.rootPc;let bass=40+(((root-40)%12)+12)%12;if(bass>51)bass-=12;if(bass<40)bass+=12;
+  if(ch.bassPc!==null){let b=40+(((ch.bassPc-40)%12)+12)%12;if(b>51)b-=12;if(b<40)b+=12;bass=b;}
+  const tones=ch.intervals.map(i=>(root+i)%12);const strings=[];let m=52;
+  while(strings.length<5&&m<=79){for(const t of tones){let c=m-(m%12)+t;if(c<m)c+=12;if(!strings.includes(c))strings.push(c);}strings.sort((a,b)=>a-b);m=(strings[strings.length-1]||m)+1;}
+  return{bass,strings:strings.slice(0,5)};
+}
+
+/* ---------- ritmos (loops hospedados em /ritmos) ---------- */
+const RHYTHMS=[
+  {file:'ritmos/balada_pop_80.wav',name:'Balada Pop',region:'lento',ts:'4/4',seconds:3.00,bars:1,nativeBpm:80},
+  {file:'ritmos/pop_120.wav',name:'Pop',region:'batida clássica',ts:'4/4',seconds:4.00,bars:2,nativeBpm:120},
+  {file:'ritmos/pop_reggae_85.wav',name:'Pop Reggae',region:'',ts:'4/4',seconds:2.82,bars:1,nativeBpm:85},
+  {file:'ritmos/reggae_roots_120.wav',name:'Reggae Roots',region:'',ts:'4/4',seconds:4.00,bars:2,nativeBpm:120},
+  {file:'ritmos/reggae_pop_145.wav',name:'Reggae Pop',region:'',ts:'4/4',seconds:6.62,bars:4,nativeBpm:145},
+  {file:'ritmos/samba_140.wav',name:'Samba',region:'Rio de Janeiro',ts:'2/4',seconds:3.43,bars:4,nativeBpm:140},
+  {file:'ritmos/samba_reggae_120.wav',name:'Samba Reggae',region:'',ts:'2/4',seconds:2.18,bars:2,nativeBpm:110},
+  {file:'ritmos/baiao_160.wav',name:'Baião / Forró',region:'Nordeste',ts:'2/4',seconds:6.00,bars:8,nativeBpm:160},
+  {file:'ritmos/xote_80.wav',name:'Xote',region:'Nordeste',ts:'2/4',seconds:3.00,bars:2,nativeBpm:80},
+  {file:'ritmos/piseiro_164.wav',name:'Piseiro',region:'Nordeste',ts:'2/4',seconds:1.46,bars:2,nativeBpm:164},
+  {file:'ritmos/arrocha_120.wav',name:'Arrocha',region:'',ts:'4/4',seconds:4.00,bars:2,nativeBpm:120},
+  {file:'ritmos/guarania_95.wav',name:'Guarânia',region:'ternário',ts:'3/4',seconds:1.89,bars:1,nativeBpm:95},
+  {file:'ritmos/vaneira_95.wav',name:'Vaneira',region:'Sul',ts:'2/4',seconds:2.53,bars:2,nativeBpm:95},
+  {file:'ritmos/vaneira_160.wav',name:'Vaneira (rápida)',region:'Sul',ts:'2/4',seconds:4.50,bars:6,nativeBpm:160},
+  {file:'ritmos/batidao_165.wav',name:'Batidão',region:'',ts:'2/4',seconds:1.45,bars:2,nativeBpm:165},
+  {file:'ritmos/reggaeton_85.wav',name:'Reggaeton',region:'',ts:'4/4',seconds:5.65,bars:2,nativeBpm:85},
+  {file:'ritmos/bachata_135.wav',name:'Bachata',region:'',ts:'4/4',seconds:3.56,bars:2,nativeBpm:135},
+];
+
+/* ---------- estado ---------- */
+let chords=[],rhythm=null,bpm=120;
+const layers={g:true,b:true,p:true};
+const $=id=>document.getElementById(id);
+const setStatus=(t,e)=>{const s=$('status');s.textContent=t;s.className='status'+(e?' err':'');};
+
+/* cifra */
+function refreshChords(){
+  const raw=$('chordInput').value.trim().replace(/\|/g,' ').split(/\s+/).filter(Boolean);
+  chords=[];const box=$('chips');box.innerHTML='';
+  raw.forEach(tok=>{const c=parseChord(tok);const chip=document.createElement('span');
+    if(!c){chip.className='chip bad';chip.textContent=tok+' ✕';box.appendChild(chip);return;}
+    c.voicing=voicing(c);chords.push(c);chip.className='chip'+(c.unknown?' bad':'');chip.dataset.i=chords.length-1;chip.textContent=c.sym+(c.unknown?' ?':'');box.appendChild(chip);});
+}
+$('chordInput').addEventListener('input',refreshChords);
+
+/* estilos */
+function renderStyles(){
+  const box=$('styles');box.innerHTML='';
+  RHYTHMS.forEach((r,i)=>{const d=document.createElement('div');d.className='style';d.dataset.i=i;
+    d.innerHTML=`<div class="sname">${r.name}</div><div class="sreg">${r.region||'&nbsp;'}</div><div class="smeta">${r.ts} · ${r.nativeBpm} BPM</div>`;
+    d.onclick=()=>selectRhythm(i);box.appendChild(d);});
+}
+function selectRhythm(i){
+  rhythm=RHYTHMS[i];
+  [...$('styles').children].forEach(el=>el.classList.toggle('on',+el.dataset.i===i));
+  bpm=rhythm.nativeBpm;$('bpm').value=bpm;$('bpmVal').textContent=bpm;
+  $('bpm').min=Math.round(rhythm.nativeBpm*0.8);$('bpm').max=Math.round(rhythm.nativeBpm*1.2);
+  $('bpmNative').textContent='(original: '+rhythm.nativeBpm+')';
+}
+$('bpm').oninput=e=>{bpm=+e.target.value;$('bpmVal').textContent=bpm;if(loopSrc)loopSrc.playbackRate.value=bpm/rhythm.nativeBpm;};
+document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{t.classList.toggle('on');layers[t.dataset.tog]=t.classList.contains('on');
+  if(t.dataset.tog==='p'&&playing){if(layers.p)startLoop(ctx.currentTime+0.05);else stopLoop();}});
+
+/* ---------- áudio ---------- */
+let ctx=null,guitar=null,bass=null,eqIn=null,loaded=false,loading=false;
+function buildEQ(){
+  eqIn=ctx.createBiquadFilter();eqIn.type='highpass';eqIn.frequency.value=80;
+  const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3600;pres.Q.value=0.9;pres.gain.value=3;
+  const air=ctx.createBiquadFilter();air.type='highshelf';air.frequency.value=6500;air.gain.value=4;
+  eqIn.connect(pres);pres.connect(air);air.connect(ctx.destination);
+}
+async function loadInstruments(){
+  if(loaded)return true;if(loading)return false;loading=true;
+  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+  buildEQ();
+  setStatus('Carregando violão e baixo…');
+  try{
+    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_nylon',volume:100,destination:eqIn});
+    bass=Soundfont(ctx,{instrument:'acoustic_bass',volume:112,destination:eqIn});
+    try{const rev=Reverb(ctx);guitar.output.addEffect('reverb',rev,0.14);}catch(e){}
+    await Promise.all([guitar.load,bass.load]);
+    loaded=true;setStatus('');
+  }catch(err){setStatus('Não consegui carregar violão/baixo (precisa de internet e HTTPS). '+err.message,true);loading=false;return false;}
+  loading=false;return true;
+}
+async function loadLoop(r){
+  if(r.buffer)return r.buffer;
+  setStatus('Carregando ritmo "'+r.name+'"…');
+  try{
+    const resp=await fetch(r.file);
+    if(!resp.ok)throw new Error('HTTP '+resp.status+' em '+r.file);
+    r.buffer=await ctx.decodeAudioData(await resp.arrayBuffer());
+    setStatus('');return r.buffer;
+  }catch(err){setStatus('Não achei o loop: '+r.file+' — confira se a pasta /ritmos está no ar. ('+err.message+')',true);return null;}
+}
+
+/* comping suave do violão + baixo por compasso */
+function strumSoft(strings,t,dur){const arr=strings.slice();arr.forEach((m,i)=>{if(guitar)guitar.start({note:m,time:t+i*0.02,duration:dur,velocity:48});});}
+function bassNote(midi,t,dur){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:82});}
+
+/* ---------- loop de percussão ---------- */
+let loopSrc=null,loopGain=null;
+function startLoop(t0){
+  stopLoop();if(!rhythm||!rhythm.buffer||!layers.p)return;
+  loopSrc=ctx.createBufferSource();loopSrc.buffer=rhythm.buffer;loopSrc.loop=true;
+  loopSrc.playbackRate.value=bpm/rhythm.nativeBpm;
+  loopGain=ctx.createGain();loopGain.gain.value=1.0;
+  loopSrc.connect(loopGain).connect(ctx.destination);loopSrc.start(t0);
+}
+function stopLoop(){if(loopSrc){try{loopSrc.stop();}catch(e){}loopSrc=null;}}
+
+/* ---------- scheduler de acordes (1 acorde por compasso) ---------- */
+let playing=false,barIdx=0,nextBarTime=0,timer=null,raf=null,uiQ=[];
+const barSec=()=>(rhythm.seconds/rhythm.bars)*(rhythm.nativeBpm/bpm);
+function scheduleBar(idx,t){
+  const ch=chords[idx%chords.length];if(!ch)return;
+  const d=barSec();
+  if(layers.g)strumSoft(ch.voicing.strings,t,d*0.92);
+  if(layers.b){bassNote(ch.voicing.bass,t,d*0.92);}
+  uiQ.push({idx,time:t});
+}
+function scheduler(){
+  while(nextBarTime<ctx.currentTime+0.25){scheduleBar(barIdx,nextBarTime);nextBarTime+=barSec();barIdx++;}
+  timer=setTimeout(scheduler,30);
+}
+function uiTick(){
+  if(!playing)return;const now=ctx.currentTime;
+  while(uiQ.length&&uiQ[0].time<=now){const e=uiQ.shift();const ch=chords[e.idx%chords.length];
+    if(ch){$('curChord').textContent=ch.sym+'  ('+(e.idx%chords.length+1)+'/'+chords.length+')';
+      [...$('chips').children].forEach(c=>c.classList.toggle('cur',+c.dataset.i===(e.idx%chords.length)));}}
+  raf=requestAnimationFrame(uiTick);
+}
+async function play(){
+  if(!rhythm){setStatus('Escolha um ritmo primeiro.');return;}
+  if(!chords.length){setStatus('Digite ao menos um acorde válido.');return;}
+  $('btnPlay').disabled=true;
+  const ok=await loadInstruments();if(!ok){$('btnPlay').disabled=false;return;}
+  const buf=await loadLoop(rhythm);if(!buf){$('btnPlay').disabled=false;return;}
+  $('btnPlay').disabled=false;
+  if(ctx.state==='suspended')ctx.resume();
+  stopAll();
+  playing=true;barIdx=0;uiQ=[];
+  const t0=ctx.currentTime+0.2;nextBarTime=t0;
+  startLoop(t0);
+  $('btnPlay').classList.add('on');$('btnPlay').childNodes[0].textContent='▶ Tocando…';$('btnStop').disabled=false;
+  setStatus('Tocando em loop — clique em Parar quando quiser.');
+  scheduler();raf=requestAnimationFrame(uiTick);
+}
+function stopAll(){if(timer)clearTimeout(timer);if(raf)cancelAnimationFrame(raf);stopLoop();playing=false;}
+function stop(){stopAll();$('btnPlay').classList.remove('on');$('btnPlay').childNodes[0].textContent='▶ Tocar';$('btnStop').disabled=true;
+  [...$('chips').children].forEach(c=>c.classList.remove('cur'));$('curChord').textContent='—';setStatus('Parado.');}
+$('btnPlay').onclick=play;$('btnStop').onclick=stop;
+
+/* init */
+refreshChords();renderStyles();selectRhythm(5); // Samba por padrão
+</script>
+</body>
+</html>
+
