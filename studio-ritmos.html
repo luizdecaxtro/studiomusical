@@ -10,7 +10,7 @@
   :root{
     --bg:#100f18;--bg2:#15131f;--panel:#1b1927;--panel2:#221f30;
     --line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.15);
-    --ink:#eceaf5;--mut:#a5a1b8;--guit:#35d0a5;--bass:#f5b642;--perc:#9d8cff;--bad:#ff6b6b;
+    --ink:#eceaf5;--mut:#a5a1b8;--guit:#35d0a5;--bass:#f5b642;--perc:#9d8cff;--keys:#6ab7ff;--bad:#ff6b6b;
     --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,"Liberation Mono",monospace;
     --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
@@ -45,13 +45,19 @@
   input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;background:#332f47;border-radius:99px;outline:none;margin-top:10px}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:var(--bass);cursor:pointer;border:3px solid #100f18}
   input[type=range]::-moz-range-thumb{width:19px;height:19px;border-radius:50%;background:var(--bass);cursor:pointer;border:3px solid #100f18}
-  .togs{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .layers{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+  .layer{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .layer .tog{min-width:172px;justify-content:flex-start}
+  .layer .vol{flex:1;min-width:130px;margin-top:0}
+  .layer .volpct{font-family:var(--mono);font-size:14px;color:var(--mut);width:46px;text-align:right}
   .tog{font-size:15px;padding:10px 15px;border-radius:11px;border:1px solid var(--line2);background:transparent;color:var(--mut);cursor:pointer;user-select:none;display:inline-flex;gap:9px;align-items:center;font-weight:600}
   .tog .sw{width:11px;height:11px;border-radius:3px;background:currentColor;opacity:.6}
   .tog.on{color:var(--ink)}
   .tog[data-tog=g].on{border-color:var(--guit);background:#132420}.tog[data-tog=g].on .sw{background:var(--guit);opacity:1}
   .tog[data-tog=b].on{border-color:var(--bass);background:#221a10}.tog[data-tog=b].on .sw{background:var(--bass);opacity:1}
   .tog[data-tog=p].on{border-color:var(--perc);background:#17142a}.tog[data-tog=p].on .sw{background:var(--perc);opacity:1}
+  .tog[data-tog=k].on{border-color:var(--keys);background:#0f2030}.tog[data-tog=k].on .sw{background:var(--keys);opacity:1}
+  .ksel{background:#0d0c14;color:var(--ink);border:1px solid var(--line2);border-radius:9px;padding:8px 10px;font-family:var(--sans);font-size:14px;cursor:pointer}
   .transport{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:20px}
   .btn{appearance:none;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);font-family:var(--sans);font-size:16px;font-weight:700;padding:14px 24px;border-radius:12px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:.15s}
   .btn:hover{background:#2a2740}
@@ -90,10 +96,23 @@
   <div class="card">
     <div class="eyebrow"><span class="n">03</span> Tocar</div>
     <div class="ctl"><label>Andamento <b><span id="bpmVal">120</span> BPM</b> <span id="bpmNative" style="color:var(--mut)"></span></label><input type="range" id="bpm" min="60" max="200" step="1" value="120"></div>
-    <div class="togs">
-      <span class="tog on" data-tog="g"><i class="sw"></i> Violão</span>
-      <span class="tog on" data-tog="b"><i class="sw"></i> Baixo</span>
-      <span class="tog on" data-tog="p"><i class="sw"></i> Percussão (loop)</span>
+    <div class="layers">
+      <div class="layer">
+        <span class="tog on" data-tog="g"><i class="sw"></i> Violão</span>
+        <input type="range" class="vol" id="vol_g" min="0" max="100" value="85">
+        <span class="volpct" id="pct_g">85%</span>
+      </div>
+      <div class="layer">
+        <span class="tog on" data-tog="b"><i class="sw"></i> Baixo</span>
+        <input type="range" class="vol" id="vol_b" min="0" max="100" value="90">
+        <span class="volpct" id="pct_b">90%</span>
+      </div>
+      <div class="layer">
+        <span class="tog on" data-tog="p"><i class="sw"></i> Percussão (loop)</span>
+        <input type="range" class="vol" id="vol_p" min="0" max="100" value="100">
+        <span class="volpct" id="pct_p">100%</span>
+      </div>
+      <div class="layer"><span class="tog" data-tog="k"><i class="sw"></i> Teclado</span><select id="keysSound" class="ksel"><option value="acoustic_grand_piano">Piano</option><option value="electric_piano_1">Piano elétrico</option><option value="rock_organ">Órgão</option><option value="accordion">Sanfona / Acordeão</option><option value="tango_accordion">Sanfona (fole)</option><option value="string_ensemble_1">Cordas</option><option value="harmonica">Gaita</option></select><input type="range" class="vol" id="vol_k" min="0" max="100" value="70"><span class="volpct" id="pct_k">70%</span></div>
     </div>
     <div class="transport">
       <button class="btn primary" id="btnPlay">▶ Tocar</button>
@@ -106,7 +125,7 @@
     </div>
   </div>
 
-  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v1</b></footer>
+  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v2</b></footer>
 </div>
 
 <script type="module">
@@ -159,7 +178,9 @@ const RHYTHMS=[
 
 /* ---------- estado ---------- */
 let chords=[],rhythm=null,bpm=120;
-const layers={g:true,b:true,p:true};
+const layers={g:true,b:true,p:true,k:false};
+const volumes={g:0.85,b:0.90,p:1.0,k:0.70};
+const keysCache={};let keysSound='acoustic_grand_piano';
 const $=id=>document.getElementById(id);
 const setStatus=(t,e)=>{const s=$('status');s.textContent=t;s.className='status'+(e?' err':'');};
 
@@ -192,12 +213,15 @@ document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{t.classList.toggle('
   if(t.dataset.tog==='p'&&playing){if(layers.p)startLoop(ctx.currentTime+0.05);else stopLoop();}});
 
 /* ---------- áudio ---------- */
-let ctx=null,guitar=null,bass=null,eqIn=null,loaded=false,loading=false;
+let ctx=null,guitar=null,bass=null,eqIn=null,guitarGain=null,bassGain=null,keysGain=null,loaded=false,loading=false;
 function buildEQ(){
   eqIn=ctx.createBiquadFilter();eqIn.type='highpass';eqIn.frequency.value=80;
   const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3600;pres.Q.value=0.9;pres.gain.value=3;
   const air=ctx.createBiquadFilter();air.type='highshelf';air.frequency.value=6500;air.gain.value=4;
   eqIn.connect(pres);pres.connect(air);air.connect(ctx.destination);
+  guitarGain=ctx.createGain();guitarGain.gain.value=volumes.g;guitarGain.connect(eqIn);
+  bassGain=ctx.createGain();bassGain.gain.value=volumes.b;bassGain.connect(eqIn);
+  keysGain=ctx.createGain();keysGain.gain.value=volumes.k;keysGain.connect(eqIn);
 }
 async function loadInstruments(){
   if(loaded)return true;if(loading)return false;loading=true;
@@ -205,8 +229,8 @@ async function loadInstruments(){
   buildEQ();
   setStatus('Carregando violão e baixo…');
   try{
-    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_nylon',volume:100,destination:eqIn});
-    bass=Soundfont(ctx,{instrument:'acoustic_bass',volume:112,destination:eqIn});
+    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_nylon',volume:100,destination:guitarGain});
+    bass=Soundfont(ctx,{instrument:'acoustic_bass',volume:112,destination:bassGain});
     try{const rev=Reverb(ctx);guitar.output.addEffect('reverb',rev,0.14);}catch(e){}
     await Promise.all([guitar.load,bass.load]);
     loaded=true;setStatus('');
@@ -225,6 +249,9 @@ async function loadLoop(r){
 }
 
 /* comping suave do violão + baixo por compasso */
+async function loadKeys(sound){if(keysCache[sound])return keysCache[sound];setStatus('Carregando teclado…');
+  try{const inst=Soundfont(ctx,{instrument:sound,destination:keysGain});await inst.load;keysCache[sound]=inst;setStatus('');return inst;}
+  catch(e){setStatus('Não consegui carregar o teclado. '+e.message,true);return null;}}
 function strumSoft(strings,t,dur){const arr=strings.slice();arr.forEach((m,i)=>{if(guitar)guitar.start({note:m,time:t+i*0.02,duration:dur,velocity:48});});}
 function bassNote(midi,t,dur){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:82});}
 
@@ -234,7 +261,7 @@ function startLoop(t0){
   stopLoop();if(!rhythm||!rhythm.buffer||!layers.p)return;
   loopSrc=ctx.createBufferSource();loopSrc.buffer=rhythm.buffer;loopSrc.loop=true;
   loopSrc.playbackRate.value=bpm/rhythm.nativeBpm;
-  loopGain=ctx.createGain();loopGain.gain.value=1.0;
+  loopGain=ctx.createGain();loopGain.gain.value=volumes.p;
   loopSrc.connect(loopGain).connect(ctx.destination);loopSrc.start(t0);
 }
 function stopLoop(){if(loopSrc){try{loopSrc.stop();}catch(e){}loopSrc=null;}}
@@ -247,6 +274,7 @@ function scheduleBar(idx,t){
   const d=barSec();
   if(layers.g)strumSoft(ch.voicing.strings,t,d*0.92);
   if(layers.b){bassNote(ch.voicing.bass,t,d*0.92);}
+  if(layers.k){const kb=keysCache[keysSound];if(kb)ch.voicing.strings.forEach(m=>kb.start({note:m,time:t,duration:d*0.95,velocity:42}));}
   uiQ.push({idx,time:t});
 }
 function scheduler(){
@@ -266,6 +294,7 @@ async function play(){
   $('btnPlay').disabled=true;
   const ok=await loadInstruments();if(!ok){$('btnPlay').disabled=false;return;}
   const buf=await loadLoop(rhythm);if(!buf){$('btnPlay').disabled=false;return;}
+  if(layers.k)await loadKeys(keysSound);
   $('btnPlay').disabled=false;
   if(ctx.state==='suspended')ctx.resume();
   stopAll();
@@ -280,6 +309,15 @@ function stopAll(){if(timer)clearTimeout(timer);if(raf)cancelAnimationFrame(raf)
 function stop(){stopAll();$('btnPlay').classList.remove('on');$('btnPlay').childNodes[0].textContent='▶ Tocar';$('btnStop').disabled=true;
   [...$('chips').children].forEach(c=>c.classList.remove('cur'));$('curChord').textContent='—';setStatus('Parado.');}
 $('btnPlay').onclick=play;$('btnStop').onclick=stop;
+
+/* volume por camada */
+function setVol(k,v){volumes[k]=v/100;$('pct_'+k).textContent=v+'%';
+  if(k==='g'&&guitarGain)guitarGain.gain.value=volumes.g;
+  if(k==='b'&&bassGain)bassGain.gain.value=volumes.b;
+  if(k==='p'&&loopGain)loopGain.gain.value=volumes.p;
+  if(k==='k'&&keysGain)keysGain.gain.value=volumes.k;}
+['g','b','p','k'].forEach(k=>{$('vol_'+k).oninput=e=>setVol(k,+e.target.value);});
+$('keysSound').onchange=e=>{keysSound=e.target.value;if(ctx&&layers.k)loadKeys(keysSound);};
 
 /* init */
 refreshChords();renderStyles();selectRhythm(5); // Samba por padrão
