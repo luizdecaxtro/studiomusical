@@ -73,6 +73,26 @@
   .note-box b{color:var(--bass)}
   footer{color:var(--mut);font-size:13px;font-family:var(--mono);margin-top:34px;text-align:center;letter-spacing:.03em}
   footer b{color:var(--guit);font-size:15px}
+  .ch-fab{position:fixed;right:20px;bottom:20px;z-index:60;background:var(--guit);color:#06231b;border:none;border-radius:999px;padding:12px 18px;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+  .ch-fab:hover{background:#48e0b6}
+  .ch-panel{position:fixed;right:20px;bottom:74px;z-index:60;width:330px;max-width:calc(100vw - 40px);max-height:72vh;overflow:auto;background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line2);border-radius:16px;padding:16px;display:none;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .ch-panel.open{display:block}
+  .ch-head{display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:800;margin-bottom:12px}
+  .ch-close{background:transparent;border:none;color:var(--mut);font-size:18px;cursor:pointer}
+  .ch-close:hover{color:var(--ink)}
+  .ch-keys{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:10px}
+  .ch-key{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 0;font-family:var(--mono);font-size:14px;cursor:pointer}
+  .ch-key.on{background:var(--guit);color:#06231b;border-color:transparent;font-weight:700}
+  .ch-mode{display:flex;gap:8px;margin-bottom:12px}
+  .ch-modebtn{flex:1;background:var(--panel2);border:1px solid var(--line2);color:var(--mut);border-radius:9px;padding:8px;font-size:14px;font-weight:600;cursor:pointer}
+  .ch-modebtn.on{background:#132420;border-color:var(--guit);color:var(--ink)}
+  .ch-title{font-family:var(--mono);font-size:15px;color:var(--guit);font-weight:700;margin-bottom:10px}
+  .ch-chords{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .ch-chord{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:9px 4px;cursor:pointer;transition:.12s}
+  .ch-chord:hover{border-color:var(--guit);background:#132420}
+  .ch-sym{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--ink)}
+  .ch-rom{font-family:var(--mono);font-size:13px;color:var(--mut)}
+  .ch-hint{font-size:13px;color:var(--mut);margin-top:12px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -125,7 +145,17 @@
     </div>
   </div>
 
-  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v2</b></footer>
+  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v3</b></footer>
+</div>
+
+<button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
+<div id="chPanel" class="ch-panel">
+  <div class="ch-head"><span>Campo Harmônico</span><button id="chClose" class="ch-close">✕</button></div>
+  <div class="ch-keys" id="chKeys"></div>
+  <div class="ch-mode"><button class="ch-modebtn on" data-mode="maior">Maior</button><button class="ch-modebtn" data-mode="menor">Menor</button></div>
+  <div class="ch-title" id="chTitle"></div>
+  <div class="ch-chords" id="chChords"></div>
+  <div class="ch-hint">Estes são os acordes que "pertencem" ao tom. Clique num acorde para adicioná-lo à sua sequência de acordes.</div>
 </div>
 
 <script type="module">
@@ -320,8 +350,33 @@ function setVol(k,v){volumes[k]=v/100;$('pct_'+k).textContent=v+'%';
 $('keysSound').onchange=e=>{keysSound=e.target.value;if(ctx&&layers.k)loadKeys(keysSound);};
 
 /* init */
+/* ---------- campo harmônico (guia) ---------- */
+const HNOTE=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const HNOTE_PT=['Dó','Dó#','Ré','Ré#','Mi','Fá','Fá#','Sol','Sol#','Lá','Lá#','Si'];
+const H_MAJ=[0,2,4,5,7,9,11],H_MIN=[0,2,3,5,7,8,10];
+const H_ROM_MAJ=['I','ii','iii','IV','V','vi','vii°'],H_ROM_MIN=['i','ii°','III','iv','v','VI','VII'];
+let chTonic=0,chMode='maior';
+function campo(tonic,mode){const scale=mode==='maior'?H_MAJ:H_MIN,roman=mode==='maior'?H_ROM_MAJ:H_ROM_MIN,out=[];
+  for(let d=0;d<7;d++){const root=(tonic+scale[d])%12,third=(tonic+scale[(d+2)%7])%12,fifth=(tonic+scale[(d+4)%7])%12;
+    const isMin=((third-root+12)%12)===3,isDim=isMin&&((fifth-root+12)%12)===6;
+    out.push({sym:HNOTE[root]+(isDim?'°':(isMin?'m':'')),roman:roman[d]});}return out;}
+function renderCH(){
+  const keys=$('chKeys');keys.innerHTML='';
+  HNOTE.forEach((n,i)=>{const b=document.createElement('button');b.className='ch-key'+(i===chTonic?' on':'');b.textContent=n;b.onclick=()=>{chTonic=i;renderCH();};keys.appendChild(b);});
+  document.querySelectorAll('.ch-modebtn').forEach(b=>b.classList.toggle('on',b.dataset.mode===chMode));
+  $('chTitle').textContent=HNOTE_PT[chTonic]+' '+chMode+'  ('+HNOTE[chTonic]+' '+chMode+')';
+  const box=$('chChords');box.innerHTML='';
+  campo(chTonic,chMode).forEach(c=>{const d=document.createElement('button');d.className='ch-chord';
+    d.innerHTML='<span class="ch-sym">'+c.sym+'</span><span class="ch-rom">'+c.roman+'</span>';
+    d.onclick=()=>useChord(c.sym);box.appendChild(d);});
+}
+function useChord(sym){const inp=$('chordInput');inp.value=(inp.value.trim()+' '+sym).trim();inp.dispatchEvent(new Event('input',{bubbles:true}));setStatus('Acorde '+sym+' adicionado.');}
+document.querySelectorAll('.ch-modebtn').forEach(b=>b.onclick=()=>{chMode=b.dataset.mode;renderCH();});
+$('chFab').onclick=()=>$('chPanel').classList.toggle('open');
+$('chClose').onclick=()=>$('chPanel').classList.remove('open');
+renderCH();
+
 refreshChords();renderStyles();selectRhythm(5); // Samba por padrão
 </script>
 </body>
 </html>
-
