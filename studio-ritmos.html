@@ -86,6 +86,9 @@
   .ch-mode{display:flex;gap:8px;margin-bottom:12px}
   .ch-modebtn{flex:1;background:var(--panel2);border:1px solid var(--line2);color:var(--mut);border-radius:9px;padding:8px;font-size:14px;font-weight:600;cursor:pointer}
   .ch-modebtn.on{background:#132420;border-color:var(--guit);color:var(--ink)}
+  .ch-sevbtn{flex:1;background:var(--panel2);border:1px solid var(--line2);color:var(--mut);border-radius:9px;padding:8px;font-size:14px;font-weight:600;cursor:pointer}
+  .ch-sevbtn.on{background:#132420;border-color:var(--guit);color:var(--ink)}
+  .ch-flash{font-family:var(--mono);font-size:14px;color:var(--guit);font-weight:700;min-height:20px;margin-top:10px;opacity:0;transition:opacity .2s}
   .ch-title{font-family:var(--mono);font-size:15px;color:var(--guit);font-weight:700;margin-bottom:10px}
   .ch-chords{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
   .ch-chord{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:9px 4px;cursor:pointer;transition:.12s}
@@ -145,7 +148,7 @@
     </div>
   </div>
 
-  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v3</b></footer>
+  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v4</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -153,8 +156,10 @@
   <div class="ch-head"><span>Campo Harmônico</span><button id="chClose" class="ch-close">✕</button></div>
   <div class="ch-keys" id="chKeys"></div>
   <div class="ch-mode"><button class="ch-modebtn on" data-mode="maior">Maior</button><button class="ch-modebtn" data-mode="menor">Menor</button></div>
+  <div class="ch-mode"><button class="ch-sevbtn on" data-sev="0">Tríades</button><button class="ch-sevbtn" data-sev="1">com 7ª</button></div>
   <div class="ch-title" id="chTitle"></div>
   <div class="ch-chords" id="chChords"></div>
+  <div class="ch-flash" id="chFlash"></div>
   <div class="ch-hint">Estes são os acordes que "pertencem" ao tom. Clique num acorde para adicioná-lo à sua sequência de acordes.</div>
 </div>
 
@@ -355,23 +360,39 @@ const HNOTE=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const HNOTE_PT=['Dó','Dó#','Ré','Ré#','Mi','Fá','Fá#','Sol','Sol#','Lá','Lá#','Si'];
 const H_MAJ=[0,2,4,5,7,9,11],H_MIN=[0,2,3,5,7,8,10];
 const H_ROM_MAJ=['I','ii','iii','IV','V','vi','vii°'],H_ROM_MIN=['i','ii°','III','iv','v','VI','VII'];
-let chTonic=0,chMode='maior';
-function campo(tonic,mode){const scale=mode==='maior'?H_MAJ:H_MIN,roman=mode==='maior'?H_ROM_MAJ:H_ROM_MIN,out=[];
-  for(let d=0;d<7;d++){const root=(tonic+scale[d])%12,third=(tonic+scale[(d+2)%7])%12,fifth=(tonic+scale[(d+4)%7])%12;
-    const isMin=((third-root+12)%12)===3,isDim=isMin&&((fifth-root+12)%12)===6;
-    out.push({sym:HNOTE[root]+(isDim?'°':(isMin?'m':'')),roman:roman[d]});}return out;}
+const H_ROM7_MAJ=['I7M','ii7','iii7','IV7M','V7','vi7','viiø'],H_ROM7_MIN=['i7','iiø','III7M','iv7','v7','VI7M','VII7'];
+let chTonic=0,chMode='maior',chSev=false;
+function seventhSym(root,i3,i5,i7){
+  if(i3===4&&i5===7&&i7===11)return HNOTE[root]+'maj7';
+  if(i3===4&&i5===7&&i7===10)return HNOTE[root]+'7';
+  if(i3===3&&i5===7&&i7===10)return HNOTE[root]+'m7';
+  if(i3===3&&i5===6&&i7===10)return HNOTE[root]+'m7b5';
+  if(i3===3&&i5===6&&i7===9)return HNOTE[root]+'dim7';
+  return HNOTE[root];
+}
+function campo(tonic,mode,sev){const scale=mode==='maior'?H_MAJ:H_MIN,
+  roman=sev?(mode==='maior'?H_ROM7_MAJ:H_ROM7_MIN):(mode==='maior'?H_ROM_MAJ:H_ROM_MIN),out=[];
+  for(let d=0;d<7;d++){const root=(tonic+scale[d])%12,third=(tonic+scale[(d+2)%7])%12,fifth=(tonic+scale[(d+4)%7])%12,sevN=(tonic+scale[(d+6)%7])%12;
+    const i3=(third-root+12)%12,i5=(fifth-root+12)%12,i7=(sevN-root+12)%12;
+    let sym;
+    if(sev)sym=seventhSym(root,i3,i5,i7);
+    else sym=HNOTE[root]+((i3===3&&i5===6)?'°':(i3===3?'m':''));
+    out.push({sym,roman:roman[d]});}return out;}
 function renderCH(){
   const keys=$('chKeys');keys.innerHTML='';
   HNOTE.forEach((n,i)=>{const b=document.createElement('button');b.className='ch-key'+(i===chTonic?' on':'');b.textContent=n;b.onclick=()=>{chTonic=i;renderCH();};keys.appendChild(b);});
   document.querySelectorAll('.ch-modebtn').forEach(b=>b.classList.toggle('on',b.dataset.mode===chMode));
-  $('chTitle').textContent=HNOTE_PT[chTonic]+' '+chMode+'  ('+HNOTE[chTonic]+' '+chMode+')';
+  document.querySelectorAll('.ch-sevbtn').forEach(b=>b.classList.toggle('on',(b.dataset.sev==='1')===chSev));
+  $('chTitle').textContent=HNOTE_PT[chTonic]+' '+chMode+(chSev?' · com 7ª':'')+'  ('+HNOTE[chTonic]+')';
   const box=$('chChords');box.innerHTML='';
-  campo(chTonic,chMode).forEach(c=>{const d=document.createElement('button');d.className='ch-chord';
+  campo(chTonic,chMode,chSev).forEach(c=>{const d=document.createElement('button');d.className='ch-chord';
     d.innerHTML='<span class="ch-sym">'+c.sym+'</span><span class="ch-rom">'+c.roman+'</span>';
     d.onclick=()=>useChord(c.sym);box.appendChild(d);});
 }
-function useChord(sym){const inp=$('chordInput');inp.value=(inp.value.trim()+' '+sym).trim();inp.dispatchEvent(new Event('input',{bubbles:true}));setStatus('Acorde '+sym+' adicionado.');}
+function useChord(sym){const inp=$('chordInput');inp.value=(inp.value.trim()+' '+sym).trim();inp.dispatchEvent(new Event('input',{bubbles:true}));chFlash(sym+' adicionado');}
+function chFlash(msg){const e=$('chFlash');if(!e)return;e.textContent='✓ '+msg;e.style.opacity='1';clearTimeout(chFlash._t);chFlash._t=setTimeout(()=>{e.style.opacity='0';},1500);}
 document.querySelectorAll('.ch-modebtn').forEach(b=>b.onclick=()=>{chMode=b.dataset.mode;renderCH();});
+document.querySelectorAll('.ch-sevbtn').forEach(b=>b.onclick=()=>{chSev=b.dataset.sev==='1';renderCH();});
 $('chFab').onclick=()=>$('chPanel').classList.toggle('open');
 $('chClose').onclick=()=>$('chPanel').classList.remove('open');
 renderCH();
