@@ -159,7 +159,7 @@
     </div>
     <div class="ctl"><label>Andamento <b><span id="bpmVal">120</span> BPM</b> <span id="bpmNative" style="color:var(--mut)"></span></label><input type="range" id="bpm" min="60" max="200" step="1" value="120"></div>
     <div class="layers">
-      <div class="layer"><span class="tog on" data-tog="g"><i class="sw"></i> Violão</span><input type="range" class="vol" id="vol_g" min="0" max="100" value="85"><span class="volpct" id="pct_g">85%</span></div>
+      <div class="layer"><span class="tog on" data-tog="g"><i class="sw"></i> Violão</span><select id="guitarStyle" class="ksel"><option value="levada">Levada</option><option value="sustentado">Sustentado</option><option value="arpejo">Arpejo</option><option value="dedilhado">Dedilhado</option></select><input type="range" class="vol" id="vol_g" min="0" max="100" value="85"><span class="volpct" id="pct_g">85%</span></div>
       <div class="layer"><span class="tog on" data-tog="b"><i class="sw"></i> Baixo</span><input type="range" class="vol" id="vol_b" min="0" max="100" value="90"><span class="volpct" id="pct_b">90%</span></div>
       <div class="layer"><span class="tog on" data-tog="p"><i class="sw"></i> Percussão (loop)</span><input type="range" class="vol" id="vol_p" min="0" max="100" value="100"><span class="volpct" id="pct_p">100%</span></div>
       <div class="layer"><span class="tog" data-tog="k"><i class="sw"></i> Teclado</span><select id="keysSound" class="ksel"><option value="acoustic_grand_piano">Piano</option><option value="electric_piano_1">Piano elétrico</option><option value="rock_organ">Órgão</option><option value="accordion">Sanfona / Acordeão</option><option value="tango_accordion">Sanfona (fole)</option><option value="string_ensemble_1">Cordas</option><option value="harmonica">Gaita</option></select><input type="range" class="vol" id="vol_k" min="0" max="100" value="70"><span class="volpct" id="pct_k">70%</span></div>
@@ -175,7 +175,7 @@
     <div class="note-box" style="border-color:rgba(255,107,107,.35);background:#20141a;color:#f3d0d7"><b style="color:#ff9fb0">Gravar música:</b> toca a estrutura do início ao fim e baixa um arquivo de áudio (.webm) na pasta Downloads, com o nome da música. Captura a mixagem interna na proporção de volumes e só as camadas ligadas. Feito para o computador; no celular pode não gravar. Para cancelar, clique em Parar.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v7</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v8</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -244,7 +244,7 @@ let rhythm=null,bpm=120;
 let lastChordsInput=null,activeSecId=null;
 const layers={g:true,b:true,p:true,k:false};
 const volumes={g:0.85,b:0.90,p:1.0,k:0.70};
-const keysCache={};let keysSound='acoustic_grand_piano';
+const keysCache={};let keysSound='acoustic_grand_piano',guitarStyle='levada';
 const KEYS_COMP={acoustic_grand_piano:3.2,electric_piano_1:3.2,rock_organ:2.8,accordion:3.2,tango_accordion:3.6,string_ensemble_1:1.0,harmonica:3.6};
 const keysComp=()=>KEYS_COMP[keysSound]||2.8;
 let sections=[
@@ -327,6 +327,7 @@ function setVol(k,v){volumes[k]=v/100;$('pct_'+k).textContent=v+'%';
   if(k==='k'&&keysGain)keysGain.gain.value=volumes.k*keysComp();}
 ['g','b','p','k'].forEach(k=>{$('vol_'+k).oninput=e=>setVol(k,+e.target.value);});
 $('keysSound').onchange=e=>{keysSound=e.target.value;if(keysGain)keysGain.gain.value=volumes.k*keysComp();if(ctx&&layers.k)loadKeys(keysSound);};
+$('guitarStyle').onchange=e=>{guitarStyle=e.target.value;};
 document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{t.classList.toggle('on');layers[t.dataset.tog]=t.classList.contains('on');
   if(t.dataset.tog==='p'&&playing){if(layers.p)startLoop(ctx.currentTime+0.05);else stopLoop();}});
 
@@ -366,7 +367,11 @@ async function loadKeys(sound){if(keysCache[sound])return keysCache[sound];setSt
   try{const inst=Soundfont(ctx,{instrument:sound,destination:keysGain});await inst.load;keysCache[sound]=inst;setStatus('');return inst;}
   catch(e){setStatus('Não consegui carregar o teclado. '+e.message,true);return null;}}
 function strum(strings,t,dur,vel,up){const arr=up?strings.slice().reverse():strings.slice();arr.forEach((m,i)=>{if(guitar)guitar.start({note:m,time:t+i*0.012,duration:dur,velocity:vel});});}
-function compGuitar(strings,t,d){const n=d>1.7?4:(d>0.95?2:1);for(let i=0;i<n;i++){const up=i%2===1;const tt=t+(d*0.98)*(i/n);const vel=i===0?98:(up?64:80);strum(strings,tt,(d/n)*0.92,vel,up);}}
+function gStrum(strings,t,d){const n=d>1.7?4:(d>0.95?2:1);for(let i=0;i<n;i++){const up=i%2===1;const tt=t+(d*0.98)*(i/n);const vel=i===0?98:(up?64:80);strum(strings,tt,(d/n)*0.92,vel,up);}}
+function gSust(strings,t,d){strum(strings,t,d*0.96,74,false);}
+function gArpejo(strings,t,d){const notes=strings.slice();const count=d>1.4?8:(d>0.7?notes.length*2:notes.length);for(let i=0;i<count;i++){const m=notes[i%notes.length];const tt=t+(d*0.98)*(i/count);if(guitar)guitar.start({note:m,time:tt,duration:(d/count)*1.8,velocity:i%notes.length===0?84:68});}}
+function gDedilhado(strings,t,d){const hi=strings.length-1;const pat=[strings[0],strings[hi],strings[Math.min(1,hi)],strings[Math.max(0,hi-1)]];const count=d>1.4?8:4;for(let i=0;i<count;i++){const m=pat[i%pat.length];const tt=t+(d*0.98)*(i/count);if(guitar)guitar.start({note:m,time:tt,duration:(d/count)*1.9,velocity:i%pat.length===0?88:66});}}
+function compGuitar(strings,t,d){if(guitarStyle==='arpejo')gArpejo(strings,t,d);else if(guitarStyle==='dedilhado')gDedilhado(strings,t,d);else if(guitarStyle==='sustentado')gSust(strings,t,d);else gStrum(strings,t,d);}
 function bassNote(midi,t,dur){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:82});}
 
 let loopSrc=null,loopGain=null,loopStopTimer=null;
@@ -486,7 +491,7 @@ $('btnPlay').onclick=play;$('btnStop').onclick=stop;$('recBtn').onclick=recordSo
 function slug(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()||'minha-musica';}
 $('saveBtn').onclick=()=>{
   const name=$('songName').value.trim()||'Minha música';
-  const data={app:'DeCastroMusica',v:1,name,rhythmIndex:RHYTHMS.indexOf(rhythm),bpm,volumes,layers:{...layers},keysSound,sections,sequence};
+  const data={app:'DeCastroMusica',v:1,name,rhythmIndex:RHYTHMS.indexOf(rhythm),bpm,volumes,layers:{...layers},keysSound,guitarStyle,sections,sequence};
   const text=JSON.stringify(data,null,2);
   const blob=new Blob([text],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -507,6 +512,7 @@ $('loadInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new F
     if(typeof d.rhythmIndex==='number'&&RHYTHMS[d.rhythmIndex])selectRhythm(d.rhythmIndex);
     if(d.layers){Object.assign(layers,d.layers);document.querySelectorAll('.tog').forEach(t=>t.classList.toggle('on',!!layers[t.dataset.tog]));}
     if(d.keysSound){keysSound=d.keysSound;const ks=$('keysSound');if(ks)ks.value=keysSound;if(keysGain)keysGain.gain.value=volumes.k*keysComp();}
+    if(d.guitarStyle){guitarStyle=d.guitarStyle;const gs=$('guitarStyle');if(gs)gs.value=guitarStyle;}
     if(d.bpm){bpm=d.bpm;$('bpm').value=bpm;$('bpmVal').textContent=bpm;}
     renderSections();renderSeqButtons();renderSequence();setStatus('Projeto carregado.');
   }catch(err){setStatus('Arquivo de projeto inválido.',true);}};
