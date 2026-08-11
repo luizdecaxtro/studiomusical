@@ -148,7 +148,7 @@
     </div>
   </div>
 
-  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v5</b></footer>
+  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v6</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -216,6 +216,8 @@ let chords=[],rhythm=null,bpm=120;
 const layers={g:true,b:true,p:true,k:false};
 const volumes={g:0.85,b:0.90,p:1.0,k:0.70};
 const keysCache={};let keysSound='acoustic_grand_piano';
+const KEYS_COMP={acoustic_grand_piano:3.2,electric_piano_1:3.2,rock_organ:2.8,accordion:3.2,tango_accordion:3.6,string_ensemble_1:1.0,harmonica:3.6};
+const keysComp=()=>KEYS_COMP[keysSound]||2.8;
 const $=id=>document.getElementById(id);
 const setStatus=(t,e)=>{const s=$('status');s.textContent=t;s.className='status'+(e?' err':'');};
 
@@ -256,7 +258,7 @@ function buildEQ(){
   eqIn.connect(pres);pres.connect(air);air.connect(ctx.destination);
   guitarGain=ctx.createGain();guitarGain.gain.value=volumes.g;guitarGain.connect(eqIn);
   bassGain=ctx.createGain();bassGain.gain.value=volumes.b;bassGain.connect(eqIn);
-  keysGain=ctx.createGain();keysGain.gain.value=volumes.k;keysGain.connect(eqIn);
+  keysGain=ctx.createGain();keysGain.gain.value=volumes.k*keysComp();keysGain.connect(eqIn);
 }
 async function loadInstruments(){
   if(loaded)return true;if(loading)return false;loading=true;
@@ -351,9 +353,9 @@ function setVol(k,v){volumes[k]=v/100;$('pct_'+k).textContent=v+'%';
   if(k==='g'&&guitarGain)guitarGain.gain.value=volumes.g;
   if(k==='b'&&bassGain)bassGain.gain.value=volumes.b;
   if(k==='p'&&loopGain)loopGain.gain.value=volumes.p;
-  if(k==='k'&&keysGain)keysGain.gain.value=volumes.k;}
+  if(k==='k'&&keysGain)keysGain.gain.value=volumes.k*keysComp();}
 ['g','b','p','k'].forEach(k=>{$('vol_'+k).oninput=e=>setVol(k,+e.target.value);});
-$('keysSound').onchange=e=>{keysSound=e.target.value;if(ctx&&layers.k)loadKeys(keysSound);};
+$('keysSound').onchange=e=>{keysSound=e.target.value;if(keysGain)keysGain.gain.value=volumes.k*keysComp();if(ctx&&layers.k)loadKeys(keysSound);};
 
 /* init */
 /* ---------- campo harmônico (guia) ---------- */
