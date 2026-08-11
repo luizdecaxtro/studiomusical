@@ -163,7 +163,7 @@
       <div class="layer"><span class="tog on" data-tog="g"><i class="sw"></i> Violão</span><select id="guitarStyle" class="ksel"><option value="levada">Levada</option><option value="sustentado">Sustentado</option><option value="arpejo">Arpejo</option><option value="dedilhado">Dedilhado</option></select><input type="range" class="vol" id="vol_g" min="0" max="100" value="85"><span class="volpct" id="pct_g">85%</span></div>
       <div class="layer"><span class="tog on" data-tog="b"><i class="sw"></i> Baixo</span><input type="range" class="vol" id="vol_b" min="0" max="100" value="90"><span class="volpct" id="pct_b">90%</span></div>
       <div class="layer"><span class="tog on" data-tog="p"><i class="sw"></i> Percussão (loop)</span><input type="range" class="vol" id="vol_p" min="0" max="100" value="100"><span class="volpct" id="pct_p">100%</span></div>
-      <div class="layer"><span class="tog" data-tog="v"><i class="sw"></i> Viradas</span><input type="range" class="vol" id="vol_v" min="0" max="100" value="90"><span class="volpct" id="pct_v">90%</span></div>
+      <div class="layer"><span class="tog" data-tog="v"><i class="sw"></i> Viradas</span><select id="viradaSel" class="ksel"><option value="rand">Aleatória</option><option value="0">Virada 1</option><option value="1">Virada 2</option><option value="2">Virada 3</option><option value="3">Virada 4</option><option value="4">Virada 5</option><option value="5">Virada 6</option><option value="6">Virada 7</option><option value="7">Virada 8</option><option value="8">Virada 9</option><option value="synth">Sintetizada</option></select><input type="range" class="vol" id="vol_v" min="0" max="100" value="90"><span class="volpct" id="pct_v">90%</span></div>
       <div class="layer"><span class="tog" data-tog="k"><i class="sw"></i> Teclado</span><select id="keysSound" class="ksel"><option value="acoustic_grand_piano">Piano</option><option value="electric_piano_1">Piano elétrico</option><option value="rock_organ">Órgão</option><option value="accordion">Sanfona / Acordeão</option><option value="tango_accordion">Sanfona (fole)</option><option value="string_ensemble_1">Cordas</option><option value="harmonica">Gaita</option></select><input type="range" class="vol" id="vol_k" min="0" max="100" value="70"><span class="volpct" id="pct_k">70%</span></div>
     </div>
     <div class="transport">
@@ -177,7 +177,7 @@
     <div class="note-box" style="border-color:rgba(255,107,107,.35);background:#20141a;color:#f3d0d7"><b style="color:#ff9fb0">Gravar música:</b> toca a estrutura do início ao fim e baixa um arquivo de áudio (.webm) na pasta Downloads, com o nome da música. Captura a mixagem interna na proporção de volumes e só as camadas ligadas. Feito para o computador; no celular pode não gravar. Para cancelar, clique em Parar.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v9</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v11</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -247,6 +247,8 @@ let rhythm=null,bpm=120;
 let lastChordsInput=null,activeSecId=null;
 const layers={g:true,b:true,p:true,k:false,v:false};
 const fillBuf={};
+const VIRADAS=[{file:'viradas/virada_1_120.wav',seconds:5.0,nativeBpm:120},{file:'viradas/virada_2_120.wav',seconds:5.0,nativeBpm:120},{file:'viradas/virada_3_120.wav',seconds:4.0,nativeBpm:120},{file:'viradas/virada_4_120.wav',seconds:4.548,nativeBpm:120},{file:'viradas/virada_5_120.wav',seconds:4.488,nativeBpm:120},{file:'viradas/virada_6_120.wav',seconds:4.8066,nativeBpm:120},{file:'viradas/virada_7_120.wav',seconds:5.7686,nativeBpm:120},{file:'viradas/virada_8_120.wav',seconds:5.4673,nativeBpm:120},{file:'viradas/virada_9_120.wav',seconds:4.2293,nativeBpm:120}];
+const viradaBuf={};let viradaMode='rand',viradaRot=0,viradaReal=false;
 const volumes={g:0.85,b:0.90,p:1.0,k:0.70,v:0.9};
 const keysCache={};let keysSound='acoustic_grand_piano',guitarStyle='levada';
 const KEYS_COMP={acoustic_grand_piano:3.2,electric_piano_1:3.2,rock_organ:2.8,accordion:3.2,tango_accordion:3.6,string_ensemble_1:1.0,harmonica:3.6};
@@ -333,6 +335,7 @@ function setVol(k,v){volumes[k]=v/100;$('pct_'+k).textContent=v+'%';
 ['g','b','p','k','v'].forEach(k=>{$('vol_'+k).oninput=e=>setVol(k,+e.target.value);});
 $('keysSound').onchange=e=>{keysSound=e.target.value;if(keysGain)keysGain.gain.value=volumes.k*keysComp();if(ctx&&layers.k)loadKeys(keysSound);};
 $('guitarStyle').onchange=e=>{guitarStyle=e.target.value;};
+$('viradaSel').onchange=e=>{viradaMode=e.target.value;};
 document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{t.classList.toggle('on');layers[t.dataset.tog]=t.classList.contains('on');
   if(t.dataset.tog==='p'&&playing){if(layers.p)startLoop(ctx.currentTime+0.05);else stopLoop();}});
 
@@ -411,12 +414,16 @@ const barSec=()=>(rhythm.seconds/rhythm.bars)*(rhythm.nativeBpm/bpm);
 function b64buf(x){const bin=atob(x),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}
 async function loadFills(){for(const k in FILL_B64){try{fillBuf[k]=await ctx.decodeAudioData(b64buf(FILL_B64[k]));}catch(e){}}}
 function fillHit(name,t,vel){const b=fillBuf[name];if(!b||!fillGain)return;const s=ctx.createBufferSource();s.buffer=b;const g=ctx.createGain();g.gain.value=vel;s.connect(g).connect(fillGain);s.start(t);}
-function playFill(t,d){const beats=parseInt(rhythm.ts)||2;const beat=d/beats;const start=t+d-beat;const n=4;for(let i=0;i<n;i++)fillHit('caixa',start+beat*(i/n),0.5+i*0.14);fillHit('surdo',start+beat*0.5,0.85);}
+function playFill(t,d){const beats=parseInt(rhythm.ts)||2;const beat=d/beats;const nb=Math.min(2,beats);const start=t+d-beat*nb;const hits=nb*2;for(let i=0;i<hits;i++){const tt=start+(beat*nb)*(i/hits);const drum=(i===0||i===hits-1)?'surdo':'caixa';fillHit(drum,tt,0.5+(i/hits)*0.45);}}
+async function loadViradas(){if(viradaMode==='synth')return;const list=viradaMode==='rand'?VIRADAS:[VIRADAS[parseInt(viradaMode)]].filter(Boolean);for(const v of list){if(v&&!viradaBuf[v.file]){try{const resp=await fetch(v.file);if(resp.ok)viradaBuf[v.file]=await ctx.decodeAudioData(await resp.arrayBuffer());}catch(e){}}}}
+function pickVirada(){if(viradaMode==='synth')return null;const avail=VIRADAS.filter(v=>viradaBuf[v.file]);if(!avail.length)return null;if(viradaMode==='rand')return avail[(viradaRot++)%avail.length];const idx=parseInt(viradaMode);return(VIRADAS[idx]&&viradaBuf[VIRADAS[idx].file])?VIRADAS[idx]:avail[0];}
+function scheduleViradas(t0){if(!viradaReal)return;const bs=barSec();for(let i=1;i<songBars.length;i++){if(!songBars[i].firstOfSeq)continue;const cfg=pickVirada();if(!cfg||!viradaBuf[cfg.file])continue;const T=t0+i*bs;const r=bpm/cfg.nativeBpm;const playDur=cfg.seconds/r;let start=T-playDur,off=0;if(start<t0){off=(t0-start)*r;start=t0;}const src=ctx.createBufferSource();src.buffer=viradaBuf[cfg.file];src.playbackRate.value=r;src.connect(fillGain||ctx.destination);try{src.start(start,Math.max(0,off));}catch(e){}
+  if(loopGain){try{loopGain.gain.setValueAtTime(volumes.p,start);loopGain.gain.linearRampToValueAtTime(volumes.p*0.28,start+0.06);loopGain.gain.setValueAtTime(volumes.p*0.28,Math.max(start+0.07,T-0.03));loopGain.gain.linearRampToValueAtTime(volumes.p,T+0.10);}catch(e){}}}}
 function scheduleBar(b,t){const d=barSec();
   if(layers.g)compGuitar(b.chord.voicing.strings,t,d);
   if(layers.b)bassNote(b.chord.voicing.bass,t,d*0.92);
   if(layers.k){const kb=keysCache[keysSound];if(kb)b.chord.voicing.strings.forEach(m=>kb.start({note:m,time:t,duration:d*0.95,velocity:42}));}
-  if(layers.v){if(b.firstOfSeq&&!b.firstBar)fillHit('prato',t,0.9);if(b.lastOfSeq&&!b.lastBar)playFill(t,d);}}
+  if(layers.v&&!viradaReal){if(b.firstOfSeq&&!b.firstBar)fillHit('prato',t,0.9);if(b.lastOfSeq&&!b.lastBar)playFill(t,d);}}
 function scheduler(){
   while(nextBarTime<ctx.currentTime+0.25&&barIdx<songBars.length){
     const b=songBars[barIdx];scheduleBar(b,nextBarTime);
@@ -437,11 +444,13 @@ async function ensureReady(){
   const ok=await loadInstruments();if(!ok)return false;
   const buf=await loadLoop(rhythm);if(!buf)return false;
   if(layers.k)await loadKeys(keysSound);
+  if(layers.v)await loadViradas();
   return true;
 }
 function startPlayback(){
   stopAll();playing=true;barIdx=0;uiQ=[];
   const t0=ctx.currentTime+0.25;nextBarTime=t0;startLoop(t0);
+  viradaReal=(viradaMode!=='synth')&&Object.keys(viradaBuf).length>0;viradaRot=0;scheduleViradas(t0);
   $('btnStop').disabled=false;
   scheduler();raf=requestAnimationFrame(uiTick);
 }
@@ -503,7 +512,7 @@ $('btnPlay').onclick=play;$('btnStop').onclick=stop;$('recBtn').onclick=recordSo
 function slug(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()||'minha-musica';}
 $('saveBtn').onclick=()=>{
   const name=$('songName').value.trim()||'Minha música';
-  const data={app:'DeCastroMusica',v:1,name,rhythmIndex:RHYTHMS.indexOf(rhythm),bpm,volumes,layers:{...layers},keysSound,guitarStyle,sections,sequence};
+  const data={app:'DeCastroMusica',v:1,name,rhythmIndex:RHYTHMS.indexOf(rhythm),bpm,volumes,layers:{...layers},keysSound,guitarStyle,viradaMode,sections,sequence};
   const text=JSON.stringify(data,null,2);
   const blob=new Blob([text],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -525,6 +534,7 @@ $('loadInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new F
     if(d.layers){Object.assign(layers,d.layers);document.querySelectorAll('.tog').forEach(t=>t.classList.toggle('on',!!layers[t.dataset.tog]));}
     if(d.keysSound){keysSound=d.keysSound;const ks=$('keysSound');if(ks)ks.value=keysSound;if(keysGain)keysGain.gain.value=volumes.k*keysComp();}
     if(d.guitarStyle){guitarStyle=d.guitarStyle;const gs=$('guitarStyle');if(gs)gs.value=guitarStyle;}
+    if(d.viradaMode){viradaMode=d.viradaMode;const vs=$('viradaSel');if(vs)vs.value=viradaMode;}
     if(d.bpm){bpm=d.bpm;$('bpm').value=bpm;$('bpmVal').textContent=bpm;}
     renderSections();renderSeqButtons();renderSequence();setStatus('Projeto carregado.');
   }catch(err){setStatus('Arquivo de projeto inválido.',true);}};
@@ -582,3 +592,4 @@ renderStyles();selectRhythm(5);renderSections();renderSeqButtons();renderSequenc
 </script>
 </body>
 </html>
+
