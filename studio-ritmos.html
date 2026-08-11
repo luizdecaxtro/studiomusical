@@ -148,7 +148,7 @@
     </div>
   </div>
 
-  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v4</b></footer>
+  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v5</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -251,8 +251,8 @@ document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{t.classList.toggle('
 let ctx=null,guitar=null,bass=null,eqIn=null,guitarGain=null,bassGain=null,keysGain=null,loaded=false,loading=false;
 function buildEQ(){
   eqIn=ctx.createBiquadFilter();eqIn.type='highpass';eqIn.frequency.value=80;
-  const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3600;pres.Q.value=0.9;pres.gain.value=3;
-  const air=ctx.createBiquadFilter();air.type='highshelf';air.frequency.value=6500;air.gain.value=4;
+  const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3400;pres.Q.value=0.8;pres.gain.value=4.5;
+  const air=ctx.createBiquadFilter();air.type='highshelf';air.frequency.value=6200;air.gain.value=6;
   eqIn.connect(pres);pres.connect(air);air.connect(ctx.destination);
   guitarGain=ctx.createGain();guitarGain.gain.value=volumes.g;guitarGain.connect(eqIn);
   bassGain=ctx.createGain();bassGain.gain.value=volumes.b;bassGain.connect(eqIn);
@@ -264,7 +264,7 @@ async function loadInstruments(){
   buildEQ();
   setStatus('Carregando violão e baixo…');
   try{
-    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_nylon',volume:100,destination:guitarGain});
+    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_steel',volume:118,destination:guitarGain});
     bass=Soundfont(ctx,{instrument:'acoustic_bass',volume:112,destination:bassGain});
     try{const rev=Reverb(ctx);guitar.output.addEffect('reverb',rev,0.14);}catch(e){}
     await Promise.all([guitar.load,bass.load]);
@@ -287,7 +287,8 @@ async function loadLoop(r){
 async function loadKeys(sound){if(keysCache[sound])return keysCache[sound];setStatus('Carregando teclado…');
   try{const inst=Soundfont(ctx,{instrument:sound,destination:keysGain});await inst.load;keysCache[sound]=inst;setStatus('');return inst;}
   catch(e){setStatus('Não consegui carregar o teclado. '+e.message,true);return null;}}
-function strumSoft(strings,t,dur){const arr=strings.slice();arr.forEach((m,i)=>{if(guitar)guitar.start({note:m,time:t+i*0.02,duration:dur,velocity:48});});}
+function strum(strings,t,dur,vel,up){const arr=up?strings.slice().reverse():strings.slice();arr.forEach((m,i)=>{if(guitar)guitar.start({note:m,time:t+i*0.012,duration:dur,velocity:vel});});}
+function compGuitar(strings,t,d){const n=d>1.7?4:(d>0.95?2:1);for(let i=0;i<n;i++){const up=i%2===1;const tt=t+(d*0.98)*(i/n);const vel=i===0?98:(up?64:80);strum(strings,tt,(d/n)*0.92,vel,up);}}
 function bassNote(midi,t,dur){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:82});}
 
 /* ---------- loop de percussão ---------- */
@@ -307,7 +308,7 @@ const barSec=()=>(rhythm.seconds/rhythm.bars)*(rhythm.nativeBpm/bpm);
 function scheduleBar(idx,t){
   const ch=chords[idx%chords.length];if(!ch)return;
   const d=barSec();
-  if(layers.g)strumSoft(ch.voicing.strings,t,d*0.92);
+  if(layers.g)compGuitar(ch.voicing.strings,t,d);
   if(layers.b){bassNote(ch.voicing.bass,t,d*0.92);}
   if(layers.k){const kb=keysCache[keysSound];if(kb)ch.voicing.strings.forEach(m=>kb.start({note:m,time:t,duration:d*0.95,velocity:42}));}
   uiQ.push({idx,time:t});
@@ -331,7 +332,7 @@ async function play(){
   const buf=await loadLoop(rhythm);if(!buf){$('btnPlay').disabled=false;return;}
   if(layers.k)await loadKeys(keysSound);
   $('btnPlay').disabled=false;
-  if(ctx.state==='suspended')ctx.resume();
+  if(ctx.state==='suspended')await ctx.resume();
   stopAll();
   playing=true;barIdx=0;uiQ=[];
   const t0=ctx.currentTime+0.2;nextBarTime=t0;
