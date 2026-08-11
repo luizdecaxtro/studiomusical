@@ -175,7 +175,7 @@
     <div class="note-box" style="border-color:rgba(255,107,107,.35);background:#20141a;color:#f3d0d7"><b style="color:#ff9fb0">Gravar música:</b> toca a estrutura do início ao fim e baixa um arquivo de áudio (.webm) na pasta Downloads, com o nome da música. Captura a mixagem interna na proporção de volumes e só as camadas ligadas. Feito para o computador; no celular pode não gravar. Para cancelar, clique em Parar.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v6</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v7</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -245,6 +245,8 @@ let lastChordsInput=null,activeSecId=null;
 const layers={g:true,b:true,p:true,k:false};
 const volumes={g:0.85,b:0.90,p:1.0,k:0.70};
 const keysCache={};let keysSound='acoustic_grand_piano';
+const KEYS_COMP={acoustic_grand_piano:3.2,electric_piano_1:3.2,rock_organ:2.8,accordion:3.2,tango_accordion:3.6,string_ensemble_1:1.0,harmonica:3.6};
+const keysComp=()=>KEYS_COMP[keysSound]||2.8;
 let sections=[
   {id:1,name:'Intro',chords:'C G',repeats:1},
   {id:2,name:'Estrofe',chords:'C G Am F',repeats:2},
@@ -322,9 +324,9 @@ function setVol(k,v){volumes[k]=v/100;$('pct_'+k).textContent=v+'%';
   if(k==='g'&&guitarGain)guitarGain.gain.value=volumes.g;
   if(k==='b'&&bassGain)bassGain.gain.value=volumes.b;
   if(k==='p'&&loopGain)loopGain.gain.value=volumes.p;
-  if(k==='k'&&keysGain)keysGain.gain.value=volumes.k;}
+  if(k==='k'&&keysGain)keysGain.gain.value=volumes.k*keysComp();}
 ['g','b','p','k'].forEach(k=>{$('vol_'+k).oninput=e=>setVol(k,+e.target.value);});
-$('keysSound').onchange=e=>{keysSound=e.target.value;if(ctx&&layers.k)loadKeys(keysSound);};
+$('keysSound').onchange=e=>{keysSound=e.target.value;if(keysGain)keysGain.gain.value=volumes.k*keysComp();if(ctx&&layers.k)loadKeys(keysSound);};
 document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{t.classList.toggle('on');layers[t.dataset.tog]=t.classList.contains('on');
   if(t.dataset.tog==='p'&&playing){if(layers.p)startLoop(ctx.currentTime+0.05);else stopLoop();}});
 
@@ -339,7 +341,7 @@ function buildEQ(){
   mediaDest=ctx.createMediaStreamDestination();air.connect(mediaDest);
   guitarGain=ctx.createGain();guitarGain.gain.value=volumes.g;guitarGain.connect(eqIn);
   bassGain=ctx.createGain();bassGain.gain.value=volumes.b;bassGain.connect(eqIn);
-  keysGain=ctx.createGain();keysGain.gain.value=volumes.k;keysGain.connect(eqIn);
+  keysGain=ctx.createGain();keysGain.gain.value=volumes.k*keysComp();keysGain.connect(eqIn);
 }
 async function loadInstruments(){
   if(loaded)return true;if(loading)return false;loading=true;
@@ -504,7 +506,7 @@ $('loadInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new F
       if(guitarGain)guitarGain.gain.value=volumes.g;if(bassGain)bassGain.gain.value=volumes.b;if(loopGain)loopGain.gain.value=volumes.p;}
     if(typeof d.rhythmIndex==='number'&&RHYTHMS[d.rhythmIndex])selectRhythm(d.rhythmIndex);
     if(d.layers){Object.assign(layers,d.layers);document.querySelectorAll('.tog').forEach(t=>t.classList.toggle('on',!!layers[t.dataset.tog]));}
-    if(d.keysSound){keysSound=d.keysSound;const ks=$('keysSound');if(ks)ks.value=keysSound;if(keysGain)keysGain.gain.value=volumes.k;}
+    if(d.keysSound){keysSound=d.keysSound;const ks=$('keysSound');if(ks)ks.value=keysSound;if(keysGain)keysGain.gain.value=volumes.k*keysComp();}
     if(d.bpm){bpm=d.bpm;$('bpm').value=bpm;$('bpmVal').textContent=bpm;}
     renderSections();renderSeqButtons();renderSequence();setStatus('Projeto carregado.');
   }catch(err){setStatus('Arquivo de projeto inválido.',true);}};
