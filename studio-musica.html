@@ -175,7 +175,7 @@
     <div class="note-box" style="border-color:rgba(255,107,107,.35);background:#20141a;color:#f3d0d7"><b style="color:#ff9fb0">Gravar música:</b> toca a estrutura do início ao fim e baixa um arquivo de áudio (.webm) na pasta Downloads, com o nome da música. Captura a mixagem interna na proporção de volumes e só as camadas ligadas. Feito para o computador; no celular pode não gravar. Para cancelar, clique em Parar.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v5</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v6</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -333,8 +333,8 @@ let ctx=null,guitar=null,bass=null,eqIn=null,guitarGain=null,bassGain=null,keysG
 let recorder=null,recChunks=[],recording=false,recCancel=false;
 function buildEQ(){
   eqIn=ctx.createBiquadFilter();eqIn.type='highpass';eqIn.frequency.value=80;
-  const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3600;pres.Q.value=0.9;pres.gain.value=3;
-  const air=ctx.createBiquadFilter();air.type='highshelf';air.frequency.value=6500;air.gain.value=4;
+  const pres=ctx.createBiquadFilter();pres.type='peaking';pres.frequency.value=3400;pres.Q.value=0.8;pres.gain.value=4.5;
+  const air=ctx.createBiquadFilter();air.type='highshelf';air.frequency.value=6200;air.gain.value=6;
   eqIn.connect(pres);pres.connect(air);air.connect(ctx.destination);
   mediaDest=ctx.createMediaStreamDestination();air.connect(mediaDest);
   guitarGain=ctx.createGain();guitarGain.gain.value=volumes.g;guitarGain.connect(eqIn);
@@ -346,7 +346,7 @@ async function loadInstruments(){
   ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();buildEQ();
   setStatus('Carregando violão e baixo…');
   try{
-    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_nylon',volume:100,destination:guitarGain});
+    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_steel',volume:118,destination:guitarGain});
     bass=Soundfont(ctx,{instrument:'acoustic_bass',volume:112,destination:bassGain});
     try{const rev=Reverb(ctx);guitar.output.addEffect('reverb',rev,0.14);}catch(e){}
     await Promise.all([guitar.load,bass.load]);loaded=true;setStatus('');
@@ -363,10 +363,11 @@ async function loadLoop(r){
 async function loadKeys(sound){if(keysCache[sound])return keysCache[sound];setStatus('Carregando teclado…');
   try{const inst=Soundfont(ctx,{instrument:sound,destination:keysGain});await inst.load;keysCache[sound]=inst;setStatus('');return inst;}
   catch(e){setStatus('Não consegui carregar o teclado. '+e.message,true);return null;}}
-function strumSoft(strings,t,dur){strings.forEach((m,i)=>{if(guitar)guitar.start({note:m,time:t+i*0.02,duration:dur,velocity:48});});}
+function strum(strings,t,dur,vel,up){const arr=up?strings.slice().reverse():strings.slice();arr.forEach((m,i)=>{if(guitar)guitar.start({note:m,time:t+i*0.012,duration:dur,velocity:vel});});}
+function compGuitar(strings,t,d){const n=d>1.7?4:(d>0.95?2:1);for(let i=0;i<n;i++){const up=i%2===1;const tt=t+(d*0.98)*(i/n);const vel=i===0?98:(up?64:80);strum(strings,tt,(d/n)*0.92,vel,up);}}
 function bassNote(midi,t,dur){if(bass)bass.start({note:midi,time:t,duration:dur,velocity:82});}
 
-let loopSrc=null,loopGain=null;
+let loopSrc=null,loopGain=null,loopStopTimer=null;
 function startLoop(t0){
   stopLoop();if(!rhythm||!rhythm.buffer||!layers.p)return;
   loopSrc=ctx.createBufferSource();loopSrc.buffer=rhythm.buffer;loopSrc.loop=true;
@@ -374,7 +375,7 @@ function startLoop(t0){
   loopGain=ctx.createGain();loopGain.gain.value=volumes.p;
   loopSrc.connect(loopGain);loopGain.connect(ctx.destination);if(mediaDest)loopGain.connect(mediaDest);loopSrc.start(t0);
 }
-function stopLoop(){if(loopSrc){try{loopSrc.stop();}catch(e){}loopSrc=null;}}
+function stopLoop(){if(loopStopTimer){clearTimeout(loopStopTimer);loopStopTimer=null;}if(loopSrc){try{loopSrc.stop();}catch(e){}loopSrc=null;}}
 
 /* ---------- montar os compassos da música ---------- */
 function buildBars(){
@@ -394,7 +395,7 @@ function buildBars(){
 let playing=false,barIdx=0,nextBarTime=0,timer=null,raf=null,uiQ=[],songBars=[],endTimer=null;
 const barSec=()=>(rhythm.seconds/rhythm.bars)*(rhythm.nativeBpm/bpm);
 function scheduleBar(b,t){const d=barSec();
-  if(layers.g)strumSoft(b.chord.voicing.strings,t,d*0.92);
+  if(layers.g)compGuitar(b.chord.voicing.strings,t,d);
   if(layers.b)bassNote(b.chord.voicing.bass,t,d*0.92);
   if(layers.k){const kb=keysCache[keysSound];if(kb)b.chord.voicing.strings.forEach(m=>kb.start({note:m,time:t,duration:d*0.95,velocity:42}));}}
 function scheduler(){
@@ -431,7 +432,7 @@ async function play(){
   if(!songBars.length){setStatus('Monte a estrutura da música com seções e acordes válidos.');return;}
   $('btnPlay').disabled=true;
   const r=await ensureReady();$('btnPlay').disabled=false;if(!r)return;
-  if(ctx.state==='suspended')ctx.resume();
+  if(ctx.state==='suspended')await ctx.resume();
   startPlayback();
   $('btnPlay').classList.add('on');$('btnPlay').childNodes[0].textContent='▶ Tocando…';
   const secs=(songBars.length*barSec()).toFixed(0);
@@ -472,7 +473,7 @@ async function recordSong(){
 }
 function stopAll(){if(timer)clearTimeout(timer);if(endTimer)clearTimeout(endTimer);if(raf)cancelAnimationFrame(raf);
   if(loopGain&&ctx){try{loopGain.gain.setTargetAtTime(0,ctx.currentTime,0.06);}catch(e){}}
-  setTimeout(stopLoop,180);playing=false;}
+  loopStopTimer=setTimeout(stopLoop,180);playing=false;}
 function resetT(){$('btnPlay').classList.remove('on');$('btnPlay').childNodes[0].textContent='▶ Tocar música';$('btnStop').disabled=true;
   [...$('sequence').children].forEach(c=>c.classList.remove('play'));}
 function finishSong(){const wasRec=recording;stopAll();resetT();$('curChord').textContent='—';if(wasRec){recording=false;recCancel=false;resetRecUI();setTimeout(()=>{if(recorder&&recorder.state!=='inactive')recorder.stop();},300);}else setStatus('Fim da música. ▶ para tocar de novo.');}
@@ -561,4 +562,3 @@ renderStyles();selectRhythm(5);renderSections();renderSeqButtons();renderSequenc
 </script>
 </body>
 </html>
-
