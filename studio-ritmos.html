@@ -122,7 +122,7 @@
     <div class="ctl"><label>Andamento <b><span id="bpmVal">120</span> BPM</b> <span id="bpmNative" style="color:var(--mut)"></span></label><input type="range" id="bpm" min="60" max="200" step="1" value="120"></div>
     <div class="layers">
       <div class="layer">
-        <span class="tog on" data-tog="g"><i class="sw"></i> Violão</span><select id="guitarStyle" class="ksel"><option value="levada">Levada</option><option value="sustentado">Sustentado</option><option value="arpejo">Arpejo</option><option value="dedilhado">Dedilhado</option></select>
+        <span class="tog on" data-tog="g"><i class="sw"></i> Violão</span><select id="guitarSound" class="ksel"><option value="acoustic_guitar_steel">Violão aço</option><option value="acoustic_guitar_nylon">Violão nylon</option><option value="electric_guitar_clean">Guitarra limpa</option><option value="electric_guitar_jazz">Guitarra jazz</option><option value="distortion_guitar">Guitarra distorcida</option></select><select id="guitarStyle" class="ksel"><option value="levada">Levada</option><option value="sustentado">Sustentado</option><option value="arpejo">Arpejo</option><option value="dedilhado">Dedilhado</option></select>
         <input type="range" class="vol" id="vol_g" min="0" max="100" value="85">
         <span class="volpct" id="pct_g">85%</span>
       </div>
@@ -149,7 +149,7 @@
     </div>
   </div>
 
-  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v10</b></footer>
+  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v11</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -217,7 +217,9 @@ const RHYTHMS=[
 let chords=[],rhythm=null,bpm=120;
 const layers={g:true,b:true,p:true,k:false};
 const volumes={g:0.85,b:0.90,p:1.0,k:0.70};
-const keysCache={};let keysSound='acoustic_grand_piano',guitarStyle='levada',bassStyle='rootquinta';
+const keysCache={};let keysSound='acoustic_grand_piano',guitarStyle='levada',bassStyle='rootquinta',guitarSound='acoustic_guitar_steel';
+const guitarCache={};
+const GUIT_VOL={acoustic_guitar_steel:118,acoustic_guitar_nylon:120,electric_guitar_clean:105,electric_guitar_jazz:110,distortion_guitar:80};
 const KEYS_COMP={acoustic_grand_piano:3.2,electric_piano_1:3.2,rock_organ:2.8,accordion:3.2,tango_accordion:3.6,string_ensemble_1:1.0,harmonica:3.6};
 const keysComp=()=>KEYS_COMP[keysSound]||2.8;
 const $=id=>document.getElementById(id);
@@ -262,16 +264,15 @@ function buildEQ(){
   bassGain=ctx.createGain();bassGain.gain.value=volumes.b;bassGain.connect(eqIn);
   keysGain=ctx.createGain();keysGain.gain.value=volumes.k*keysComp();keysGain.connect(eqIn);
 }
+async function loadGuitar(name){if(!guitarCache[name]){guitarCache[name]=Soundfont(ctx,{instrument:name,volume:(GUIT_VOL[name]||110),destination:guitarGain});try{const rev=Reverb(ctx);guitarCache[name].output.addEffect('reverb',rev,0.12);}catch(e){}await guitarCache[name].load;}guitar=guitarCache[name];}
 async function loadInstruments(){
   if(loaded)return true;if(loading)return false;loading=true;
   ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
   buildEQ();
   setStatus('Carregando violão e baixo…');
   try{
-    guitar=Soundfont(ctx,{instrument:'acoustic_guitar_steel',volume:118,destination:guitarGain});
     bass=Soundfont(ctx,{instrument:'acoustic_bass',volume:112,destination:bassGain});
-    try{const rev=Reverb(ctx);guitar.output.addEffect('reverb',rev,0.14);}catch(e){}
-    await Promise.all([guitar.load,bass.load]);
+    await Promise.all([loadGuitar(guitarSound),bass.load]);
     loaded=true;setStatus('');
   }catch(err){setStatus('Não consegui carregar violão/baixo (precisa de internet e HTTPS). '+err.message,true);loading=false;return false;}
   loading=false;return true;
@@ -373,6 +374,7 @@ function setVol(k,v){volumes[k]=v/100;$('pct_'+k).textContent=v+'%';
 ['g','b','p','k'].forEach(k=>{$('vol_'+k).oninput=e=>setVol(k,+e.target.value);});
 $('keysSound').onchange=e=>{keysSound=e.target.value;if(keysGain)keysGain.gain.value=volumes.k*keysComp();if(ctx&&layers.k)loadKeys(keysSound);};
 $('guitarStyle').onchange=e=>{guitarStyle=e.target.value;};
+$('guitarSound').onchange=e=>{guitarSound=e.target.value;if(ctx)loadGuitar(guitarSound);};
 $('bassStyle').onchange=e=>{bassStyle=e.target.value;};
 
 /* init */
@@ -422,3 +424,4 @@ refreshChords();renderStyles();selectRhythm(5); // Samba por padrão
 </script>
 </body>
 </html>
+
