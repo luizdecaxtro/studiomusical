@@ -187,7 +187,7 @@
     <div class="note-box" style="border-color:rgba(255,107,107,.35);background:#20141a;color:#f3d0d7"><b style="color:#ff9fb0">Gravar música:</b> toca a estrutura do início ao fim e baixa um arquivo de áudio (.webm) na pasta Downloads, com o nome da música. Captura a mixagem interna na proporção de volumes e só as camadas ligadas. Feito para o computador; no celular pode não gravar. Para cancelar, clique em Parar.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v27</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v28</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -258,7 +258,7 @@ let rhythm=null,bpm=120;
 let lastChordsInput=null,activeSecId=null;
 const layers={g:true,b:true,p:true,k:false,v:false};
 const fillBuf={};
-const VIRADAS=[{file:'viradas/virada_intro_120.wav',seconds:4.6,nativeBpm:120,role:'intro'},{file:'viradas/virada_fim_120.wav',seconds:4.1433,nativeBpm:120,role:'fim'},{file:'viradas/virada-001-120bpm.wav',seconds:3.04,nativeBpm:120,role:'meio'}];
+const VIRADAS=[{file:'viradas/virada_intro_120.wav',seconds:4.6,nativeBpm:120,role:'intro',s0:0.94,s1:2.70},{file:'viradas/virada_fim_120.wav',seconds:4.1433,nativeBpm:120,role:'fim',s0:0.0,s1:2.30},{file:'viradas/virada-001-120bpm.wav',seconds:3.04,nativeBpm:120,role:'meio',s0:0.05,s1:1.90}];
 const viradaBuf={};let viradaMode='rand',viradaReal=false,rotMeio=0;
 const volumes={g:0.85,b:0.90,p:1.0,k:0.70,v:0.9};
 const keysCache={};let keysSound='acoustic_grand_piano',guitarStyle='levada',bassStyle='rootquinta';
@@ -364,7 +364,7 @@ function buildEQ(){
   guitarGain=ctx.createGain();guitarGain.gain.value=volumes.g;guitarGain.connect(eqIn);
   bassGain=ctx.createGain();bassGain.gain.value=volumes.b;bassGain.connect(eqIn);
   keysGain=ctx.createGain();keysGain.gain.value=volumes.k*keysComp();keysGain.connect(eqIn);
-  fillGain=ctx.createGain();fillGain.gain.value=volumes.v;fillGain.connect(ctx.destination);if(mediaDest)fillGain.connect(mediaDest);
+  fillGain=ctx.createGain();fillGain.gain.value=volumes.v;const fillHi=ctx.createBiquadFilter();fillHi.type='highshelf';fillHi.frequency.value=2800;fillHi.gain.value=7;fillGain.connect(fillHi);fillHi.connect(ctx.destination);if(mediaDest)fillHi.connect(mediaDest);
   metGain=ctx.createGain();metGain.gain.value=0.5;metGain.connect(ctx.destination);
 }
 async function loadInstruments(){
@@ -441,8 +441,8 @@ function fillHit(name,t,vel){const b=fillBuf[name];if(!b||!fillGain)return;const
 function playFill(t,d){const beats=parseInt(rhythm.ts)||2;const beat=d/beats;const nb=Math.min(2,beats);const start=t+d-beat*nb;const hits=nb*2;for(let i=0;i<hits;i++){const tt=start+(beat*nb)*(i/hits);const drum=(i===0||i===hits-1)?'surdo':'caixa';fillHit(drum,tt,0.5+(i/hits)*0.45);}}
 async function loadViradas(){if(viradaMode==='synth')return;const list=viradaMode==='rand'?VIRADAS:[VIRADAS[parseInt(viradaMode)]].filter(Boolean);for(const v of list){if(v&&!viradaBuf[v.file]){try{const resp=await fetch(v.file);if(resp.ok)viradaBuf[v.file]=await ctx.decodeAudioData(await resp.arrayBuffer());}catch(e){}}}}
 function pickVirada(role){if(viradaMode==='synth')return null;const pool=VIRADAS.filter(v=>v.role===role&&viradaBuf[v.file]);if(pool.length)return role==='meio'?pool[(rotMeio++)%pool.length]:pool[0];const any=VIRADAS.filter(v=>viradaBuf[v.file]);return any.length?any[(rotMeio++)%any.length]:null;}
-function scheduleEnding(t0){if(!layers.v)return;const endAt=t0+songBars.length*barSec();if(viradaReal){const cfg=pickVirada('fim');if(cfg&&viradaBuf[cfg.file]){const r=bpm/cfg.nativeBpm;const pd=cfg.seconds/r;const src=ctx.createBufferSource();src.buffer=viradaBuf[cfg.file];src.playbackRate.value=r;src.connect(fillGain||ctx.destination);fillSrcs.push(src);try{src.start(Math.max(t0,endAt-pd));}catch(e){}}}fillHit('prato',endAt,1.0);if(loopGain){try{loopGain.gain.setTargetAtTime(0.0001,endAt,0.09);}catch(e){}}if(loopSrc){try{loopSrc.stop(endAt+0.6);}catch(e){}}}
-function scheduleViradas(t0){if(!viradaReal)return;const bs=barSec();let lastEnd=t0;for(let i=1;i<songBars.length;i++){if(!songBars[i].firstOfSeq)continue;const into=(songBars[i].section||'').toLowerCase(),from=(songBars[i-1]?songBars[i-1].section:'').toLowerCase();if(into.indexOf('refr')<0||from.indexOf('refr')>=0)continue;const cfg=pickVirada('meio');if(!cfg||!viradaBuf[cfg.file])continue;const T=t0+i*bs;const r=bpm/cfg.nativeBpm;const playDur=cfg.seconds/r;let start=T-playDur;if(start<lastEnd)continue;const src=ctx.createBufferSource();src.buffer=viradaBuf[cfg.file];src.playbackRate.value=r;src.connect(fillGain||ctx.destination);fillSrcs.push(src);try{src.start(start);}catch(e){}lastEnd=T;if(loopGain){try{loopGain.gain.setValueAtTime(volumes.p,start);loopGain.gain.linearRampToValueAtTime(volumes.p*0.06,start+0.06);loopGain.gain.setValueAtTime(volumes.p*0.06,Math.max(start+0.07,T-0.03));loopGain.gain.linearRampToValueAtTime(volumes.p,T+0.10);}catch(e){}}}}
+function scheduleEnding(t0){if(!layers.v)return;const endAt=t0+songBars.length*barSec();if(viradaReal){const cfg=pickVirada('fim');if(cfg&&viradaBuf[cfg.file]){const sd=cfg.s1-cfg.s0;const fs=Math.max(t0,endAt-sd);const src=ctx.createBufferSource();src.buffer=viradaBuf[cfg.file];src.playbackRate.value=1;src.connect(fillGain||ctx.destination);fillSrcs.push(src);try{src.start(fs,cfg.s0);}catch(e){}fillHit('prato',fs,0.9);}}fillHit('prato',endAt,1.0);if(loopGain){try{loopGain.gain.setTargetAtTime(0.0001,endAt,0.09);}catch(e){}}if(loopSrc){try{loopSrc.stop(endAt+0.6);}catch(e){}}}
+function scheduleViradas(t0){if(!viradaReal)return;const bs=barSec();let lastEnd=t0;for(let i=1;i<songBars.length;i++){if(!songBars[i].firstOfSeq)continue;const into=(songBars[i].section||'').toLowerCase(),from=(songBars[i-1]?songBars[i-1].section:'').toLowerCase();if(into.indexOf('refr')<0||from.indexOf('refr')>=0)continue;const cfg=pickVirada('meio');if(!cfg||!viradaBuf[cfg.file])continue;const T=t0+i*bs;const r=bpm/cfg.nativeBpm;const sd=(cfg.s1-cfg.s0);const playDur=sd/r;let start=T-playDur;if(start<lastEnd)continue;const src=ctx.createBufferSource();src.buffer=viradaBuf[cfg.file];src.playbackRate.value=r;src.connect(fillGain||ctx.destination);fillSrcs.push(src);try{src.start(start,cfg.s0);}catch(e){}lastEnd=T;if(loopGain){try{loopGain.gain.setValueAtTime(volumes.p,start);loopGain.gain.linearRampToValueAtTime(volumes.p*0.06,start+0.06);loopGain.gain.setValueAtTime(volumes.p*0.06,Math.max(start+0.07,T-0.03));loopGain.gain.linearRampToValueAtTime(volumes.p,T+0.10);}catch(e){}}}}
 function scheduleBar(b,t){const d=barSec();
   if(layers.g)compGuitar(b.chord.voicing.strings,t,d);
   if(layers.b)compBass(b.chord,t,d);
@@ -481,9 +481,9 @@ function startPlayback(){
   stopAll();playing=true;barIdx=0;uiQ=[];beatQ=[];
   viradaReal=(viradaMode!=='synth')&&Object.keys(viradaBuf).length>0;rotMeio=0;
   let introLen=0,introCfg=null;
-  if(layers.v&&viradaReal){introCfg=pickVirada('intro');if(introCfg&&viradaBuf[introCfg.file])introLen=introCfg.seconds/(bpm/introCfg.nativeBpm);}
+  if(layers.v&&viradaReal){introCfg=pickVirada('intro');if(introCfg&&viradaBuf[introCfg.file])introLen=(introCfg.s1-introCfg.s0);}
   const t0=ctx.currentTime+0.30+introLen;nextBarTime=t0;
-  if(layers.v&&introCfg&&viradaBuf[introCfg.file]){const r=bpm/introCfg.nativeBpm;const src=ctx.createBufferSource();src.buffer=viradaBuf[introCfg.file];src.playbackRate.value=r;src.connect(fillGain||ctx.destination);fillSrcs.push(src);try{src.start(Math.max(ctx.currentTime,t0-introLen));}catch(e){}}
+  if(layers.v&&introCfg&&viradaBuf[introCfg.file]){const sd=introCfg.s1-introCfg.s0;const src=ctx.createBufferSource();src.buffer=viradaBuf[introCfg.file];src.playbackRate.value=1;src.connect(fillGain||ctx.destination);fillSrcs.push(src);try{src.start(Math.max(ctx.currentTime,t0-sd),introCfg.s0);}catch(e){}}
   startLoop(t0);
   playT0=t0;songTotalSec=songBars.length*barSec();
   scheduleViradas(t0);scheduleEnding(t0);
