@@ -149,7 +149,7 @@
     </div>
   </div>
 
-  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v11</b></footer>
+  <footer>Loops reais via Web Audio API · violão &amp; baixo por amostras (smplr) · ritmos servidos da pasta /ritmos<br><br><b>BUILD: RITMOS-v12</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -246,7 +246,7 @@ function selectRhythm(i){
   rhythm=RHYTHMS[i];
   [...$('styles').children].forEach(el=>el.classList.toggle('on',+el.dataset.i===i));
   bpm=rhythm.nativeBpm;$('bpm').value=bpm;$('bpmVal').textContent=bpm;
-  $('bpm').min=Math.round(rhythm.nativeBpm*0.8);$('bpm').max=Math.round(rhythm.nativeBpm*1.2);
+  $('bpm').min=Math.max(40,Math.round(rhythm.nativeBpm*0.6));$('bpm').max=Math.min(220,Math.round(rhythm.nativeBpm*2.0));
   $('bpmNative').textContent='(original: '+rhythm.nativeBpm+')';
 }
 $('bpm').oninput=e=>{bpm=+e.target.value;$('bpmVal').textContent=bpm;if(loopSrc)loopSrc.playbackRate.value=bpm/rhythm.nativeBpm;};
@@ -424,4 +424,3 @@ refreshChords();renderStyles();selectRhythm(5); // Samba por padrão
 </script>
 </body>
 </html>
-
