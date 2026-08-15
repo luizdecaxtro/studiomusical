@@ -187,7 +187,7 @@
     <div class="note-box" style="border-color:rgba(255,107,107,.35);background:#20141a;color:#f3d0d7"><b style="color:#ff9fb0">Gravar música:</b> toca a estrutura do início ao fim e baixa um arquivo de áudio (.webm) na pasta Downloads, com o nome da música. Captura a mixagem interna na proporção de volumes e só as camadas ligadas. Feito para o computador; no celular pode não gravar. Para cancelar, clique em Parar.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v30</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v31</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -287,7 +287,7 @@ function selectRhythm(i){
   rhythm=RHYTHMS[i];
   [...$('styles').children].forEach(el=>el.classList.toggle('on',+el.dataset.i===i));
   bpm=rhythm.nativeBpm;$('bpm').value=bpm;$('bpmVal').textContent=bpm;
-  $('bpm').min=Math.round(rhythm.nativeBpm*0.8);$('bpm').max=Math.round(rhythm.nativeBpm*1.2);
+  $('bpm').min=Math.max(40,Math.round(rhythm.nativeBpm*0.6));$('bpm').max=Math.min(220,Math.round(rhythm.nativeBpm*2.0));
   $('bpmNative').textContent='(original: '+rhythm.nativeBpm+')';updateTotal();
 }
 $('bpm').oninput=e=>{bpm=+e.target.value;$('bpmVal').textContent=bpm;if(loopSrc&&rhythm)loopSrc.playbackRate.value=bpm/rhythm.nativeBpm;updateTotal();};
