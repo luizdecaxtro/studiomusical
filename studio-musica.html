@@ -187,7 +187,7 @@
     <div class="note-box" style="border-color:rgba(255,107,107,.35);background:#20141a;color:#f3d0d7"><b style="color:#ff9fb0">Gravar música:</b> toca a estrutura do início ao fim e baixa um arquivo de áudio (.webm) na pasta Downloads, com o nome da música. Captura a mixagem interna na proporção de volumes e só as camadas ligadas. Feito para o computador; no celular pode não gravar. Para cancelar, clique em Parar.</div>
   </div>
 
-  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v25</b></footer>
+  <footer>Estrutura por seções · loops reais · violão &amp; baixo por amostras · projeto salvo em JSON<br><br><b>BUILD: MUSICA-v26</b></footer>
 </div>
 
 <button id="chFab" class="ch-fab">📖 Campo Harmônico</button>
@@ -407,7 +407,7 @@ function compBass(ch,t,d){const r=ch.voicing.bass,iv=ch.intervals||[0,4,7];
   else seq=(beats>=4)?[r,fifth,oct,fifth]:(beats===3?[r,fifth,oct]:[r,fifth]);
   for(let j=0;j<beats;j++)hit(seq[j%seq.length],t+j*bs,j===0?98:84);}
 
-let loopSrc=null,loopGain=null,loopStopTimer=null;
+let loopSrc=null,loopGain=null,loopStopTimer=null,fillSrcs=[];
 function startLoop(t0){
   stopLoop();if(!rhythm||!rhythm.buffer||!layers.p)return;
   loopSrc=ctx.createBufferSource();loopSrc.buffer=rhythm.buffer;loopSrc.loop=true;
@@ -437,20 +437,12 @@ let playing=false,barIdx=0,nextBarTime=0,timer=null,raf=null,uiQ=[],songBars=[],
 const barSec=()=>(rhythm.seconds/rhythm.bars)*(rhythm.nativeBpm/bpm);
 function b64buf(x){const bin=atob(x),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}
 async function loadFills(){for(const k in FILL_B64){try{fillBuf[k]=await ctx.decodeAudioData(b64buf(FILL_B64[k]));}catch(e){}}}
-function fillHit(name,t,vel){const b=fillBuf[name];if(!b||!fillGain)return;const s=ctx.createBufferSource();s.buffer=b;const g=ctx.createGain();g.gain.value=vel;s.connect(g).connect(fillGain);s.start(t);}
+function fillHit(name,t,vel){const b=fillBuf[name];if(!b||!fillGain)return;const s=ctx.createBufferSource();s.buffer=b;const g=ctx.createGain();g.gain.value=vel;s.connect(g).connect(fillGain);fillSrcs.push(s);s.start(t);}
 function playFill(t,d){const beats=parseInt(rhythm.ts)||2;const beat=d/beats;const nb=Math.min(2,beats);const start=t+d-beat*nb;const hits=nb*2;for(let i=0;i<hits;i++){const tt=start+(beat*nb)*(i/hits);const drum=(i===0||i===hits-1)?'surdo':'caixa';fillHit(drum,tt,0.5+(i/hits)*0.45);}}
 async function loadViradas(){if(viradaMode==='synth')return;const list=viradaMode==='rand'?VIRADAS:[VIRADAS[parseInt(viradaMode)]].filter(Boolean);for(const v of list){if(v&&!viradaBuf[v.file]){try{const resp=await fetch(v.file);if(resp.ok)viradaBuf[v.file]=await ctx.decodeAudioData(await resp.arrayBuffer());}catch(e){}}}}
 function pickVirada(role){if(viradaMode==='synth')return null;const pool=VIRADAS.filter(v=>v.role===role&&viradaBuf[v.file]);if(pool.length)return role==='meio'?pool[(rotMeio++)%pool.length]:pool[0];const any=VIRADAS.filter(v=>viradaBuf[v.file]);return any.length?any[(rotMeio++)%any.length]:null;}
-function scheduleEnding(t0){
-  if(!layers.v)return;
-  const endAt=t0+songBars.length*barSec();
-  if(viradaReal){const cfg=pickVirada('fim');if(cfg&&viradaBuf[cfg.file]){const pd=cfg.seconds;const src=ctx.createBufferSource();src.buffer=viradaBuf[cfg.file];src.playbackRate.value=1;src.connect(fillGain||ctx.destination);try{src.start(Math.max(t0,endAt-pd));}catch(e){}}}
-  else playFill(endAt-barSec(),barSec());
-  fillHit('prato',endAt,1.0);
-  if(loopGain){try{loopGain.gain.setTargetAtTime(0.0001,endAt,0.09);}catch(e){}}
-  if(loopSrc){try{loopSrc.stop(endAt+0.6);}catch(e){}}
-}
-function scheduleViradas(t0){if(!viradaReal)return;const bs=barSec();let lastEnd=t0;for(let i=1;i<songBars.length;i++){if(!songBars[i].firstOfSeq)continue;const into=(songBars[i].section||'').toLowerCase(),from=(songBars[i-1]?songBars[i-1].section:'').toLowerCase();if(into.indexOf('refr')<0||from.indexOf('refr')>=0)continue;const cfg=pickVirada('meio');if(!cfg||!viradaBuf[cfg.file])continue;const T=t0+i*bs;const playDur=cfg.seconds;let start=T-playDur;if(start<lastEnd)continue;const src=ctx.createBufferSource();src.buffer=viradaBuf[cfg.file];src.playbackRate.value=1;src.connect(fillGain||ctx.destination);try{src.start(start);}catch(e){}lastEnd=T;if(loopGain){try{loopGain.gain.setValueAtTime(volumes.p,start);loopGain.gain.linearRampToValueAtTime(volumes.p*0.12,start+0.06);loopGain.gain.setValueAtTime(volumes.p*0.12,Math.max(start+0.07,T-0.03));loopGain.gain.linearRampToValueAtTime(volumes.p,T+0.10);}catch(e){}}}}
+function scheduleEnding(t0){if(!layers.v)return;const endAt=t0+songBars.length*barSec();if(loopGain){try{loopGain.gain.setTargetAtTime(0.0001,endAt,0.09);}catch(e){}}if(loopSrc){try{loopSrc.stop(endAt+0.6);}catch(e){}}}
+function scheduleViradas(t0){if(!viradaReal)return;const bs=barSec();let lastEnd=t0;for(let i=1;i<songBars.length;i++){if(!songBars[i].firstOfSeq)continue;const into=(songBars[i].section||'').toLowerCase(),from=(songBars[i-1]?songBars[i-1].section:'').toLowerCase();if(into.indexOf('refr')<0||from.indexOf('refr')>=0)continue;const cfg=pickVirada('meio');if(!cfg||!viradaBuf[cfg.file])continue;const T=t0+i*bs;const playDur=cfg.seconds;let start=T-playDur;if(start<lastEnd)continue;const src=ctx.createBufferSource();src.buffer=viradaBuf[cfg.file];src.playbackRate.value=1;src.connect(fillGain||ctx.destination);fillSrcs.push(src);try{src.start(start);}catch(e){}lastEnd=T;if(loopGain){try{loopGain.gain.setValueAtTime(volumes.p,start);loopGain.gain.linearRampToValueAtTime(volumes.p*0.12,start+0.06);loopGain.gain.setValueAtTime(volumes.p*0.12,Math.max(start+0.07,T-0.03));loopGain.gain.linearRampToValueAtTime(volumes.p,T+0.10);}catch(e){}}}}
 function scheduleBar(b,t){const d=barSec();
   if(layers.g)compGuitar(b.chord.voicing.strings,t,d);
   if(layers.b)compBass(b.chord,t,d);
@@ -488,16 +480,7 @@ async function ensureReady(){
 function startPlayback(){
   stopAll();playing=true;barIdx=0;uiQ=[];beatQ=[];
   viradaReal=(viradaMode!=='synth')&&Object.keys(viradaBuf).length>0;rotMeio=0;
-  let introLen=0,introCfg=null;
-  if(layers.v){
-    if(viradaReal){introCfg=pickVirada('intro');introLen=(introCfg&&viradaBuf[introCfg.file])?introCfg.seconds:barSec();}
-    else introLen=barSec();
-  }
-  const t0=ctx.currentTime+0.30+introLen;nextBarTime=t0;
-  if(layers.v&&introLen>0){
-    if(introCfg&&viradaBuf[introCfg.file]){const src=ctx.createBufferSource();src.buffer=viradaBuf[introCfg.file];src.playbackRate.value=1;src.connect(fillGain||ctx.destination);try{src.start(Math.max(ctx.currentTime,t0-introLen));}catch(e){}}
-    else playFill(t0-barSec(),barSec());
-  }
+  const t0=ctx.currentTime+0.30;nextBarTime=t0;
   startLoop(t0);
   playT0=t0;songTotalSec=songBars.length*barSec();
   scheduleViradas(t0);scheduleEnding(t0);
@@ -549,7 +532,7 @@ async function recordSong(){
   const secs=(songBars.length*barSec()).toFixed(0);
   setStatus('Gravando a música do início ao fim (~'+secs+'s)… não feche a aba.');
 }
-function stopAll(){if(timer)clearTimeout(timer);if(endTimer)clearTimeout(endTimer);if(raf)cancelAnimationFrame(raf);
+function stopAll(){if(timer)clearTimeout(timer);if(endTimer)clearTimeout(endTimer);if(raf)cancelAnimationFrame(raf);fillSrcs.forEach(x=>{try{x.stop();}catch(e){}});fillSrcs=[];
   if(loopGain&&ctx){try{loopGain.gain.setTargetAtTime(0,ctx.currentTime,0.06);}catch(e){}}
   loopStopTimer=setTimeout(stopLoop,180);playing=false;}
 function resetT(){$('btnPlay').classList.remove('on');$('btnPlay').childNodes[0].textContent='▶ Tocar música';$('btnStop').disabled=true;const _bd=$('beatDots');if(_bd)[..._bd.children].forEach(d=>d.classList.remove('on'));const _bc=$('beatCount');if(_bc)_bc.textContent='';playT0=0;updateTotal();
